@@ -1,6 +1,7 @@
-use matrix2d::Matrix2D;
+pub mod matrix2d;
 //use std::fs::File;
 //use std::io::{ Write,Read };
+use self::matrix2d::Matrix2D;
 
 // 神经网络
 pub struct NeuralNetwork{

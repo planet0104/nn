@@ -5,3 +5,7 @@ authors = ["planet0104 <planet0104@gmail.com>"]
 
 [dependencies]
 rand = "*"
+
+[dependencies.sdl2]
+version = "0.31.0"
+features = ["bundled", "static-link", "gfx"]
