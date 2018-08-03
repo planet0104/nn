@@ -1,5 +1,5 @@
 use sdl2::rect::Point;
-use nn::NeuralNetwork;
+use cnn::NeuralNet;
 use vector_2d::{Vector2D, Float};
 use sdl2::render::Canvas;
 use sdl2::pixels::Color;
@@ -8,17 +8,17 @@ use sdl2::gfx::primitives::DrawRenderer;
 use data::Data;
 
 //内置模式总数
-pub const NUM_PATTERNS:usize = 11;
+pub const NUM_PATTERNS:i32 = 11;
 //每个模式包含多少个向量
-pub const NUM_VECTORS:usize = 12;
+pub const NUM_VECTORS:i32 = 12;
 //公差
 pub const MATCH_TOLERANCE:f32 = 0.96;
-pub const LEARNING_RATE:f32 = 0.2;
-pub const NUM_HIDDEN_NEURONS:usize = 6;
+//backprop的学习率
+const LEARNING_RATE:f32 = 1.0;
+const NUM_HIDDEN_NEURONS:i32 = 6;
 
 pub const WINDOW_WIDTH:i32 = 400;
 pub const WINDOW_HEIGHT:i32 = 400;
-
 
 pub struct Controller{
     drawing: bool,//是否正在绘制
@@ -26,14 +26,15 @@ pub struct Controller{
 	smooth_path: Vec<Point>,
 	vectors: Vec<f32>,//平滑路径转换成向量
 
-    highest_output: f32, //网络过程最高输出. 最可能被选中的手势
     best_match: i32, //基于higest_output的最好的手势
     the_match: i32, //如果网络发现一个模式，这个是匹配
     
-    num_smooth_points:usize,//未处理鼠标手势将被用下面个数的点平滑处理
-    num_valid_patterns:usize, //数据库的模式数量
+    num_smooth_points:i32,//未处理鼠标手势将被用下面个数的点平滑处理
 
-    net: NeuralNetwork, //神经网络
+    //网络猜测结果正确的可能性
+    match_probability: f32,
+
+    net: NeuralNet, //神经网络
     data: Data
 }
 
@@ -45,12 +46,11 @@ impl Controller{
             smooth_path: vec![],
             vectors: vec![],
             drawing: false,
-            highest_output: 0.0,
+            match_probability: 0.0,
             best_match: -1,
             the_match: -1,
             num_smooth_points: NUM_VECTORS+1,
-            num_valid_patterns: NUM_PATTERNS,
-            net: NeuralNetwork::new(NUM_VECTORS*2, NUM_HIDDEN_NEURONS, NUM_PATTERNS, LEARNING_RATE),
+            net: NeuralNet::new(NUM_VECTORS*2, NUM_PATTERNS, NUM_HIDDEN_NEURONS, LEARNING_RATE),
             data: Data::new(NUM_PATTERNS, NUM_VECTORS)
         }
     }
@@ -72,7 +72,7 @@ impl Controller{
             if self.smooth(){
                 //创建向量
                 self.create_vectors();
-                self.test_for_match();
+                let _ = self.test_for_match();
             }
         }
         self.drawing = drawing;
@@ -93,7 +93,7 @@ impl Controller{
 
     /// 将鼠标数据转换成一定数量的点
     fn smooth(&mut self) -> bool{
-        if self.path.len() < self.num_smooth_points{
+        if self.path.len() < self.num_smooth_points as usize{
             false
         }else{
 
@@ -101,7 +101,7 @@ impl Controller{
             self.smooth_path = self.path.clone();
 
             //当点数过多时，通过对所有点的循环，找出最小的跨度，在它原有位置中间创建一个新点，并删除原有的点
-            while self.smooth_path.len() > self.num_smooth_points{
+            while self.smooth_path.len() > self.num_smooth_points as usize{
                 let mut shortest_so_far = 99999999.0;
                 let mut point_marker = 0;
                 //计算最短跨度(即相邻两点间的距离)
@@ -135,24 +135,49 @@ impl Controller{
     }
 
     //在先前学习好的手势中测试一个适合学模式的手势
-    fn test_for_match(&mut self){
-        //将平滑后的鼠标数据输入网络并找到匹配
-        let output_matrx = self.net.query(&self.vectors);
+    fn test_for_match(&mut self) -> bool{
+        //将平滑的鼠标向量输入网络，看看我们是否得到匹配
+        let outputs = self.net.update(&self.vectors);
 
-        let values:&Vec<Vec<f32>> = output_matrx.matrix();
+        if outputs.len() == 0{
+            println!("神经网络输出有误");
+            false
+        }else{
+            //浏览输出并查看哪个最高
+            self.match_probability = 0.0;
+            self.best_match = 0;
+            self.the_match = -1;
+            
+            for i in 0..outputs.len(){
+                if outputs[i] > self.match_probability{
+                    //记下最有可能的候选人
+                    self.match_probability = outputs[i];
 
-        self.highest_output = 0.0;
-        self.best_match = 0;
-        self.the_match = -1;
+                    self.best_match = i as i32;
 
-        for i in 1..values.len() {
-            if values[i][0] > self.highest_output {
-                self.highest_output = values[i][0];
-                self.best_match = i as i32;
-                if self.highest_output > MATCH_TOLERANCE{
-                    self.the_match = self.best_match;
+                    //如果候选输出超过阈值，我们就匹配了！ ...所以记下它。
+                    if self.match_probability > MATCH_TOLERANCE{
+                        self.the_match = self.best_match;
+                    }
                 }
             }
+
+
+            //render best match
+            if self.match_probability > 0.0{
+                if self.smooth_path.len() > 1{
+                    if self.match_probability < MATCH_TOLERANCE{
+                        println!("我猜是 {}", self.data.pattern_name(self.best_match as usize));
+                    }else{
+                        println!("{}", self.data.pattern_name(self.the_match as usize));
+                    }
+                    println!("正确率:{}", self.match_probability);
+                }else{
+                    println!("没有足够的点绘制，请再试一次", )
+                }
+            }
+
+            true
         }
     }
 
@@ -161,22 +186,6 @@ impl Controller{
     }
     
     pub fn render(&self, canvas: &mut Canvas<Window>){
-        if !self.drawing{
-            //绘制最匹配的
-            if self.highest_output>0.0{
-                if self.smooth_path.len() > 1{
-                    if self.highest_output<MATCH_TOLERANCE{
-                        //如果最高输出小于容人值
-                        println!("我猜是: {}", self.data.pattern_name(self.best_match as usize));
-                    }else{
-                        println!("结果是: {}", self.data.pattern_name(self.the_match as usize));
-                    }
-                }else{
-                    println!("没有足够的点绘图，再试一次");
-                }
-            }
-        }
-
         if self.path.len() < 1{
             return;
         }
@@ -201,47 +210,8 @@ impl Controller{
         self.drawing
     }
 
-    pub fn train(&mut self){
-        let set_in = self.data.get_input_set();
-        let set_out = self.data.get_output_set();
-
-        assert!(set_in.len() == set_out.len()
-            && set_in[0].len() == NUM_VECTORS*2
-            && set_out[0].len() == NUM_PATTERNS);
-        
-        let mut error = 1.0;
-        let mut epoch = 0;
-        while error>=0.2{
-            for i in 0..set_in.len(){
-                self.net.train(&set_in[i], &set_out[i]);
-            }
-            
-            error = 0.0;
-            //计算误差
-            for i in 0..set_in.len(){
-                //查询网络
-                let outputs = self.net.query(&set_in[i]);
-                
-                //找到最高的输出
-                let values:Vec<f32> = outputs.matrix().iter().map(|o| o[0]).collect();
-                //println!("outputs={:?}", values);
-                let mut max_val = values[0];
-                let mut max_index = 0;
-                for i in 1..values.len() {
-                    if values[i] > max_val {
-                        max_val = values[i];
-                        max_index = i;
-                    }
-                }
-                
-                error += 0.99 - values[max_index];
-            }
-
-            if epoch%1000 == 0{
-                println!("error={}", error);
-            }
-
-            epoch += 1;
-        }
+    //使用预定义的训练集训练神经网络
+    pub fn train_network(&mut self) -> Result<(), String>{
+        NeuralNet::train(&mut self.net, &self.data)
     }
 }

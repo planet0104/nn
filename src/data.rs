@@ -1,6 +1,8 @@
+
+use cnn::Data as TData;
 use ::controller::{NUM_VECTORS, NUM_PATTERNS};
 
-const INPUT_VECTORS:[[f32; NUM_VECTORS*2]; NUM_PATTERNS] = [
+const INPUT_VECTORS:[[f32; NUM_VECTORS as usize*2]; NUM_PATTERNS as usize] = [
 	//右
 	[1.0,0.0, 1.0,0.0, 1.0,0.0, 1.0,0.0, 1.0,0.0, 1.0,0.0, 1.0,0.0, 1.0,0.0, 1.0,0.0, 1.0,0.0, 1.0,0.0, 1.0,0.0],
 	//左
@@ -25,7 +27,7 @@ const INPUT_VECTORS:[[f32; NUM_VECTORS*2]; NUM_PATTERNS] = [
 	[1.0,0.0, 1.0,0.0, 1.0,0.0, 1.0,0.0, -0.72,0.69,-0.7,0.72,0.59,0.81, 1.0,0.0, 1.0,0.0, 1.0,0.0, 1.0,0.0, 1.0,0.0]
 ]; 
 
-const NAMES: [&str; NUM_PATTERNS]=[
+const NAMES: [&str; NUM_PATTERNS as usize]=[
   "右",
   "左",
   "下",
@@ -48,15 +50,25 @@ pub struct Data{
     vector_size: usize,
 }
 
+impl TData for Data{
+    fn get_input_set(&self) -> &Vec<Vec<f32>>{
+        &self.set_in
+    }
+
+    fn get_output_set(&self) -> &Vec<Vec<f32>>{
+        &self.set_out
+    }
+}
+
 impl Data{
-    pub fn new(num_patterns: usize, vector_size:usize) -> Data{
+    pub fn new(num_patterns: i32, vector_size:i32) -> Data{
         let mut data = Data{
             set_in: vec![],
             set_out: vec![],
             names: vec![],
             patterns: vec![],
-            num_patterns,
-            vector_size
+            num_patterns: num_patterns as usize,
+            vector_size: vector_size as usize
         };
 
         data.init();
@@ -100,13 +112,5 @@ impl Data{
         }else{
             ""
         }
-    }
-
-    pub fn get_input_set(&self) -> &Vec<Vec<f32>>{
-        &self.set_in
-    }
-
-    pub fn get_output_set(&self) -> &Vec<Vec<f32>>{
-        &self.set_out
     }
 }

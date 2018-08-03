@@ -1,4 +1,64 @@
 
+
+
+
+
+//------------ 旧的训练
+
+let set_in = self.data.get_input_set();
+        let set_out = self.data.get_output_set();
+
+        assert!(set_in.len() == set_out.len()
+            && set_in[0].len() == NUM_VECTORS*2
+            && set_out[0].len() == NUM_PATTERNS);
+        
+        let mut error = 1.0;
+        let mut epoch = 0;
+        while error>=0.2{
+            for i in 0..set_in.len(){
+                self.net.train(&set_in[i], &set_out[i]);
+            }
+            
+            error = 0.0;
+            //计算误差
+            for i in 0..set_in.len(){
+                //查询网络
+                let outputs = self.net.query(&set_in[i]);
+                
+                //找到最高的输出
+                let values:Vec<f32> = outputs.matrix().iter().map(|o| o[0]).collect();
+                //println!("outputs={:?}", values);
+                let mut max_val = values[0];
+                let mut max_index = 0;
+                for i in 1..values.len() {
+                    if values[i] > max_val {
+                        max_val = values[i];
+                        max_index = i;
+                    }
+                }
+                
+                error += 0.99 - values[max_index];
+            }
+
+            if epoch%1000 == 0{
+                println!("error={}", error);
+            }
+
+            epoch += 1;
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
 println!("开始训练网络...");
     //输入、隐藏、输出层的节点数
     let input_nodes:usize = 784;

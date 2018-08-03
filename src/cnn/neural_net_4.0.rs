@@ -8,6 +8,7 @@
 //-------------------------------------------------------------------------
 
 use cnn::utils;
+use std::f32::consts::E;
 
 //-----------------------------------------------
 //  used in CNeuralNet
@@ -16,9 +17,8 @@ const ACTIVATION_RESPONSE:f32 = 1.0;
 const BIAS: f32 = -1.0;
 
 //当总误差低于该值时，后备停止训练
-const ERROR_THRESHOLD:f32 = 0.003;
+const ERROR_THRESHOLD:f32 = 0.02;
 const MOMENTUM:f32 = 0.9;
-const MAX_NOISE_TO_ADD:f32 = 0.1;
 
 /// 定义输入或输出向量的类型（在训练方法中使用）
 pub type IoVector = Vec<f32>;
@@ -116,6 +116,9 @@ pub struct NeuralNet{
     //如果网络已经过培训，则为true
     trained: bool,
 
+    //如果需要softmax输出，则设置为TRUE
+    soft_max: bool,
+
     //纪元柜台
     num_epochs: i32,
 
@@ -125,14 +128,17 @@ pub struct NeuralNet{
 
 impl NeuralNet{
     
+
     pub fn new(num_inputs: i32,
                 num_outputs: i32,
                 hidden_neurons: i32,
-                learning_rate: f32)-> NeuralNet{
+                learning_rate: f32,
+                soft_max: bool)-> NeuralNet{
         let mut net = NeuralNet{
             num_inputs,
             num_outputs,
             num_hidden_layers: 1,
+            soft_max,
             neurons_per_hidden_lyr: hidden_neurons,
             learning_rate,
             error_sum: 9999.0,
@@ -149,14 +155,9 @@ impl NeuralNet{
 
 	//计算一组输入的输出
     pub fn update(&mut self, inputs: &Vec<f32>) -> Vec<f32>{
-
         //存储每层的结果输出
         let mut outputs = vec![];
         let mut inputs = inputs.clone();
-        //为数据添加一些噪音
-        for k in 0..inputs.len(){
-            inputs[k] += utils::rand_float() * MAX_NOISE_TO_ADD;
-        }
 
         //首先检查我们是否有正确的输入量
         if inputs.len() != self.num_inputs as usize{
@@ -193,12 +194,32 @@ impl NeuralNet{
                 netinput += self.layers[i].neurons[n].weight[num_inputs-1] * BIAS;
 
                 
-                //首先通过sigmoid函数过滤组合激活，并为每个神经元保留记录
-                self.layers[i].neurons[n].activation = NeuralNet::sigmoid(netinput, ACTIVATION_RESPONSE);
+                //softmax on output layers
+                if self.soft_max && (i == self.num_hidden_layers as usize){
+                    self.layers[i].neurons[n].activation = netinput.exp();
+                }else{
+                    //首先通过sigmoid函数过滤组合激活，并为每个神经元保留记录
+                    self.layers[i].neurons[n].activation = NeuralNet::sigmoid(netinput, ACTIVATION_RESPONSE);
+                }
 
                 //在生成它们时存储每个层的输出。
                 outputs.push(self.layers[i].neurons[n].activation);
                 weight = 0;
+            }
+        }
+
+        if self.soft_max{
+            let mut exp_tot = 0.0;
+
+            //首先计算输出总和的exp
+            for o in 0..outputs.len(){
+                exp_tot += outputs[o];
+            }
+
+            //现在相应地调整每个输出
+            for o in 0..outputs.len(){
+                outputs[o] = outputs[o]/exp_tot;
+                self.layers[self.num_hidden_layers as usize].neurons[o].activation = outputs[o];    
             }
         }
 
@@ -228,10 +249,6 @@ impl NeuralNet{
                 let err = (set_out[vec][op] - outputs[op]) * outputs[op]
                             * (1.0 - outputs[op]);
 
-                //更新错误总数。 （当此值低于预设阈值时，我们知道培训成功）
-                self.error_sum += (set_out[vec][op] - outputs[op]) *
-                                    (set_out[vec][op] - outputs[op]);
-
                 //记录错误值
                 self.layers[1].neurons[op].error = err;
 
@@ -259,6 +276,24 @@ impl NeuralNet{
                 //保留此重量更新的记录
                 self.layers[1].neurons[op].prev_update[cur_index] = weight_update;
             }
+
+            //更新错误总数。 （当此值低于预设阈值时，我们知道培训成功）
+            let mut error = 0.0;
+
+            if !self.soft_max{ //Use SSE
+                for o in 0..self.num_outputs as usize{
+                    error += (set_out[vec][o] - outputs[o]) *
+                            (set_out[vec][o] - outputs[o]);
+                }
+            }else{//使用交叉熵错误
+                for o in 0..self.num_outputs as usize{
+                    error += set_out[vec][o] * outputs[o].log(E);
+                }
+
+                error = -error;
+            }
+            
+            self.error_sum += error;
 
 
             //**向后移动到隐藏层**

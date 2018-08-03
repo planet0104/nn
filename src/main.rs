@@ -1,12 +1,11 @@
 extern crate rand;
 extern crate sdl2;
 
-mod nn;
-use nn::NeuralNetwork;
+mod cnn;
+mod data;
 use std::fs::File;
 use std::io::prelude::*;
 use std::str::FromStr;
-use nn::matrix2d::Matrix2D;
 use rand::Rng;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -15,7 +14,6 @@ use std::time::{Duration, Instant};
 
 mod vector_2d;
 mod controller;
-mod data;
 
 fn main() {
     let sdl_context = sdl2::init().unwrap();
@@ -29,7 +27,11 @@ fn main() {
     let mut canvas = window.into_canvas().build().unwrap();
 
     let mut controller = controller::Controller::new();
-    controller.train();
+    println!("开始训练网络");
+    match controller.train_network(){
+        Ok(_) => println!("网络训练成功."),
+        Err(err) => println!("网络训练失败! {}", err)
+    }
     controller.render(&mut canvas);
 
     'mainloop: loop {
