@@ -1,10 +1,6 @@
 extern crate rand;
 extern crate sdl2;
 extern crate scraper;
-extern crate serde_json;
-
-use serde_json::{Value, Error};
-use serde_json::map::Map;
  
 mod cnn;
 mod data;
@@ -77,40 +73,32 @@ fn main() {
 }
 
 fn parse_html(){
-    /*
-
-	hzbh.main('繁', 繁:[17,'0:(162,18) (186,36) (138,96) (96,144) (30,204)#1:(138,96) (420,96) (378,78) (336,96)#2:(144,138) (108,336) (84,354) (108,336) (444,336) (402,324) (366,336)#3:(138,162) (360,162) (390,138) (360,162) (330,360)#4:(192,168) (246,204) (264,228) (270,246)#5:(24,252) (462,252) (420,234) (384,252)#6:(192,252) (246,276) (264,300) (270,324)#7:(528,18) (552,30) (510,96) (474,144) (444,186)#8:(498,114) (726,114) (684,96) (648,114)#9:(654,114) (636,162) (612,216) (582,264) (546,306) (492,354) (438,390)#10:(486,132) (522,210) (552,258) (588,300) (630,336) (660,360) (714,390)#11:(312,360) (348,366) (198,456) (162,468) (198,456) (402,444)#12:(468,384) (498,396) (348,474) (150,564) (114,576) (150,564) (576,540)#13:(480,474) (552,516) (594,552) (618,588)#14:(390,552) (390,708) (378,732) (348,762) (270,702)#15:(234,594) (276,612) (192,672) (120,714) (54,744)#16:(480,606) (540,636) (618,684) (690,738)']});hzbh.flash('繁','fj/fan7');
-    */
-    let doc = String::from_utf8_lossy(ma_html);
+    let doc = Html::parse_document(&String::from_utf8_lossy(fan_html));
    // println!("{:#?}", doc);
-   let s = doc.split("hzbh.main(");
-   if let Some(s) = s.skip(1).next(){
-       let mut s = s.split(");");
-       if let Some(s) = s.next(){
-            let s = s.split("{");
-            if let Some(s) = s.skip(1).next(){
-                //繁:[17, '0:(x,y)..#2:(x,y)..#3..']}
-                
-                let mut map = s.split(":[");
-                let key = map.next().unwrap();
-                let mut value = map.next().unwrap().trim_right_matches("']}").split(",'");
-                let count = value.next().unwrap();
-                let mut string = String::from(value.next().unwrap());
-                println!("汉字={}", key);
-                println!("笔画数={}", count);
-                for i in 0..count.parse().unwrap(){
-                    string = string.replace(&format!("{}:", i), "");
-                }
-                println!("{}", string);
-                
-            }else{
-                println!("没有找到花括号");
+
+    let mut hzcanvas = doc.select(&Selector::parse("#hzcanvas").unwrap()).next().unwrap();
+    let childs = hzcanvas.children().next().unwrap().children();
+    let mut count = 0;
+    for child in childs{
+        count += 1;
+        
+        //println!("{:?}", node.as_element().unwrap().attr("style"));
+
+        let eref = ElementRef::wrap(child).unwrap();
+        let element = eref.value();
+        let mut style = HashMap::new();
+        for s in element.attr("style").unwrap().split(";"){
+            
+            //println!("s={}", s);
+            if s.len()>0{
+                let mut pair = s.split(":");
+                style.insert(pair.next().unwrap(), pair.next().unwrap());
             }
-       }else{
-           println!("没有找到);");
-       }
-   }else{
-       println!("没有找到hzbh.main(");
-   }
-   
+        }
+        let text = eref.inner_html();
+        if text.len()>0{
+            println!("text={} left={:?},top={:?}", text, style.get(&"left"), style.get(&"top"));
+        }
+    }
+    
 }
