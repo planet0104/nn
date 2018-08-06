@@ -24,16 +24,13 @@ use std::collections::HashMap;
 mod vector_2d;
 mod controller;
 
-<<<<<<< HEAD
 const ma_html:&[u8] = include_bytes!("../ma.html");
 const fan_html:&[u8] = include_bytes!("../fan.html");
-=======
 //字典查询 http://dict.r12345.com/0x91D1.html (可以去到笔顺编号)
 //笔顺图片查询: http://bishun.shufaji.com/0x91D1.html
 // 1.渲染保存图片 2.从指定位置开始，取每一个笔画
 //免费字体:https://www.jianshu.com/p/9da5250a9503
 //
->>>>>>> c80c2182460a98db5fc70786dd6f05657f316594
 
 fn main() {
     let sdl_context = sdl2::init().unwrap();
