@@ -8,7 +8,6 @@ use serde_json::map::Map;
 use sdl2::pixels::Color;
  
 mod cnn;
-mod data;
 use std::fs::File;
 use std::io::prelude::*;
 use std::str::FromStr;
@@ -46,22 +45,22 @@ fn main() {
 
     let mut controller = controller::Controller::new();
     println!("开始训练网络");
-    // match controller.train_network(){
-    //     Ok(_) => println!("网络训练成功."),
-    //     Err(err) => println!("网络训练失败! {}", err)
-    // }
+    match controller.train_network(){
+        Ok(_) => println!("网络训练成功."),
+        Err(err) => println!("网络训练失败! {}", err)
+    }
     controller.render(&mut canvas);
 
-    let (key, draw) = parse_html(&String::from_utf8_lossy(fan_html)).unwrap();
-    canvas.set_draw_color(Color::RGB(255, 255, 255));
-    //canvas.clear();
-    let scale = 0.5;
-    canvas.set_scale(scale, scale);
-    for i in 0..draw.len(){
-        println!("第{}笔:{:?}", i, draw[i]);
-        canvas.draw_lines(draw[i].as_slice()).unwrap();
-    }
-    canvas.present();
+    // let (key, draw) = parse_html(&String::from_utf8_lossy(fan_html)).unwrap();
+    // canvas.set_draw_color(Color::RGB(255, 255, 255));
+    // //canvas.clear();
+    // let scale = 0.5;
+    // canvas.set_scale(scale, scale).unwrap();
+    // for i in 0..draw.len(){
+    //     println!("第{}笔:{:?}", i, draw[i]);
+    //     canvas.draw_lines(draw[i].as_slice()).unwrap();
+    // }
+    // canvas.present();
 
     'mainloop: loop {
             for event in sdl_context.event_pump().unwrap().poll_iter() {

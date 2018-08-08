@@ -5,20 +5,10 @@ use sdl2::render::Canvas;
 use sdl2::pixels::Color;
 use sdl2::video::Window;
 use sdl2::gfx::primitives::DrawRenderer;
-use data::Data;
+use cnn::Data;
 
-//内置模式总数
-pub const NUM_PATTERNS:i32 = 11;
-//每个模式包含多少个向量
-pub const NUM_VECTORS:i32 = 12;
-//公差
-pub const MATCH_TOLERANCE:f32 = 0.96;
-//backprop的学习率
-const LEARNING_RATE:f32 = 1.0;
-const NUM_HIDDEN_NEURONS:i32 = 6;
-
-pub const WINDOW_WIDTH:i32 = 400;
-pub const WINDOW_HEIGHT:i32 = 400;
+//include!("gesture_config.rs");
+include!("stroke_config.rs");
 
 pub struct Controller{
     drawing: bool,//是否正在绘制
@@ -51,7 +41,10 @@ impl Controller{
             the_match: -1,
             num_smooth_points: NUM_VECTORS+1,
             net: NeuralNet::new(NUM_VECTORS*2, NUM_PATTERNS, NUM_HIDDEN_NEURONS, LEARNING_RATE),
-            data: Data::new(NUM_PATTERNS, NUM_VECTORS)
+            data: Data::new(NUM_PATTERNS, NUM_VECTORS,
+            &INPUT_VECTORS.iter().map(|vectors|{
+                vectors.iter().map(|f|{ *f }).collect()
+            }).collect(), &NAMES.iter().map(|name|{ name.to_string() }).collect())
         }
     }
 

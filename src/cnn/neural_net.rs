@@ -8,6 +8,7 @@
 //-------------------------------------------------------------------------
 
 use cnn::utils;
+use cnn::data::Data;
 
 //-----------------------------------------------
 //  used in CNeuralNet
@@ -22,11 +23,6 @@ const MAX_NOISE_TO_ADD:f32 = 0.1;
 
 /// 定义输入或输出向量的类型（在训练方法中使用）
 pub type IoVector = Vec<f32>;
-
-pub trait Data{
-    fn get_input_set(&self) -> &Vec<Vec<f32>>;
-    fn get_output_set(&self) -> &Vec<Vec<f32>>;
-}
 
 //定义神经元结构
 pub struct Neuron{
