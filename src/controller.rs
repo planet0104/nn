@@ -7,7 +7,7 @@ use sdl2::video::Window;
 use sdl2::gfx::primitives::DrawRenderer;
 use cnn::Data;
 
-//include!("gesture_config.rs");
+// include!("gesture_config.rs");
 include!("stroke_config.rs");
 
 pub struct Controller{
@@ -201,6 +201,10 @@ impl Controller{
 
     pub fn drawing(&self) -> bool{
         self.drawing
+    }
+
+    pub fn vectors(&self) -> &Vec<f32>{
+        &self.vectors
     }
 
     //使用预定义的训练集训练神经网络

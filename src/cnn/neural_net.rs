@@ -17,7 +17,7 @@ const ACTIVATION_RESPONSE:f32 = 1.0;
 const BIAS: f32 = -1.0;
 
 //当总误差低于该值时，后备停止训练
-const ERROR_THRESHOLD:f32 = 0.003;
+const ERROR_THRESHOLD:f32 = 0.0001;
 const MOMENTUM:f32 = 0.9;
 const MAX_NOISE_TO_ADD:f32 = 0.1;
 
