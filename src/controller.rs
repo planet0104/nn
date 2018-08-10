@@ -72,7 +72,7 @@ impl Controller{
     }
 
     /// 给出一系列点, 创建一个路径
-    fn create_vectors(&mut self){
+    pub fn create_vectors(&mut self){
         for p in 1..self.smooth_path.len(){
             let x = self.smooth_path[p].x - self.smooth_path[p-1].x;
             let y = self.smooth_path[p].y - self.smooth_path[p-1].y;
@@ -85,7 +85,7 @@ impl Controller{
     }
 
     /// 将鼠标数据转换成一定数量的点
-    fn smooth(&mut self) -> bool{
+    pub fn smooth(&mut self) -> bool{
         if self.path.len() < self.num_smooth_points as usize{
             false
         }else{

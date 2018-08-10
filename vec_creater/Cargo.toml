@@ -1,0 +1,10 @@
+[package]
+name = "vec_creater"
+version = "0.1.0"
+authors = ["days888"]
+
+[dependencies]
+# ocl = "0.18"
+# num_cpus = "1.8.0"
+#rand = "*"
+lodepng = "2.3.0"

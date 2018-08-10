@@ -17,7 +17,7 @@ const ACTIVATION_RESPONSE:f32 = 1.0;
 const BIAS: f32 = -1.0;
 
 //当总误差低于该值时，后备停止训练
-const ERROR_THRESHOLD:f32 = 0.0001;
+const ERROR_THRESHOLD:f32 = 0.00005;
 const MOMENTUM:f32 = 0.9;
 const MAX_NOISE_TO_ADD:f32 = 0.1;
 
@@ -318,9 +318,9 @@ impl NeuralNet{
         //使用backprop训练直到SSE低于用户定义的阈值
         let mut i = 0;
         while net.error_sum > ERROR_THRESHOLD{
-            //if i%5000==0{
+            if i%5000==0{
             println!("epochs={} error_sum={}", net.num_epochs, net.error_sum);
-           // }
+           }
             //如果有任何问题，则返回false
             match net.network_training_epoch(set_in, set_out){
                 Err(err) =>{
