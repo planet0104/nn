@@ -4,8 +4,8 @@ use vector_2d::{Vector2D, Float};
 use sdl2::render::Canvas;
 use sdl2::pixels::Color;
 use sdl2::video::Window;
-use sdl2::gfx::primitives::DrawRenderer;
 use cnn::Data;
+use sdl2::rect::Rect;
 
 // include!("gesture_config.rs");
 include!("stroke_config.rs");
@@ -62,9 +62,10 @@ impl Controller{
         if drawing{
             self.clear();
         }else{
-            if self.smooth(){
+            if let Some(smooth_path) = Controller::smooth(&self.path, self.num_smooth_points as usize){
                 //创建向量
-                self.create_vectors();
+                self.smooth_path = smooth_path;
+                self.vectors = Controller::create_vectors(&self.smooth_path);
                 let _ = self.test_for_match();
             }
         }
@@ -72,43 +73,44 @@ impl Controller{
     }
 
     /// 给出一系列点, 创建一个路径
-    pub fn create_vectors(&mut self){
-        for p in 1..self.smooth_path.len(){
-            let x = self.smooth_path[p].x - self.smooth_path[p-1].x;
-            let y = self.smooth_path[p].y - self.smooth_path[p-1].y;
+    pub fn create_vectors(smooth_path:&Vec<Point>) -> Vec<f32>{
+        let mut vectors = vec![];
+        for p in 1..smooth_path.len(){
+            let x = smooth_path[p].x - smooth_path[p-1].x;
+            let y = smooth_path[p].y - smooth_path[p-1].y;
             //let v1 = Vector2D::new(1.0, 0.0);
             let mut v2 = Vector2D::new(x as Float, y as Float);
             Vector2D::normalize(&mut v2);
-            self.vectors.push(v2.x);
-            self.vectors.push(v2.y);
+            vectors.push(v2.x);
+            vectors.push(v2.y);
         }
+        vectors
     }
 
     /// 将鼠标数据转换成一定数量的点
-    pub fn smooth(&mut self) -> bool{
-        if self.path.len() < self.num_smooth_points as usize{
-            false
+    pub fn smooth(path: &Vec<Point>, num_smooth_points: usize) -> Option<Vec<Point>>{
+        if path.len() < num_smooth_points as usize{
+            None
         }else{
-
             //复制原始未加工的鼠标数据
-            self.smooth_path = self.path.clone();
+            let mut smooth_path = path.clone();
 
             //当点数过多时，通过对所有点的循环，找出最小的跨度，在它原有位置中间创建一个新点，并删除原有的点
-            while self.smooth_path.len() > self.num_smooth_points as usize{
+            while smooth_path.len() > num_smooth_points as usize{
                 let mut shortest_so_far = 99999999.0;
                 let mut point_marker = 0;
                 //计算最短跨度(即相邻两点间的距离)
-                for span_front in 2..self.smooth_path.len()-1{
+                for span_front in 2..smooth_path.len()-1{
                     //计算这些点之间的距离
                     let len =
-                        (((self.smooth_path[span_front-1].x -
-                        self.smooth_path[span_front].x) *
-                        (self.smooth_path[span_front-1].x -
-                        self.smooth_path[span_front].x) +
-                        (self.smooth_path[span_front-1].y -
-                        self.smooth_path[span_front].y) *
-                        (self.smooth_path[span_front-1].y -
-                        self.smooth_path[span_front].y)) as f32).sqrt();
+                        (((smooth_path[span_front-1].x -
+                        smooth_path[span_front].x) *
+                        (smooth_path[span_front-1].x -
+                        smooth_path[span_front].x) +
+                        (smooth_path[span_front-1].y -
+                        smooth_path[span_front].y) *
+                        (smooth_path[span_front-1].y -
+                        smooth_path[span_front].y)) as f32).sqrt();
                     if len < shortest_so_far{
                         shortest_so_far = len;
                         point_marker = span_front;
@@ -117,13 +119,13 @@ impl Controller{
 
                 //找出最短跨度，然后计算跨度的中点，作为新点的插入位置，并删除跨度原来的两个点
                 let mut new_point = Point::new(0, 0);
-                new_point.x = (self.smooth_path[point_marker-1].x + self.smooth_path[point_marker].x)/2;
-                new_point.y = (self.smooth_path[point_marker-1].y + self.smooth_path[point_marker].y)/2;
-                self.smooth_path[point_marker-1] = new_point;
-                self.smooth_path.remove(point_marker);
+                new_point.x = (smooth_path[point_marker-1].x + smooth_path[point_marker].x)/2;
+                new_point.y = (smooth_path[point_marker-1].y + smooth_path[point_marker].y)/2;
+                smooth_path[point_marker-1] = new_point;
+                smooth_path.remove(point_marker);
             }
 
-            true
+            Some(smooth_path)
         }
     }
 
@@ -192,7 +194,13 @@ impl Controller{
         //将平滑的路径链接起来(画圈)
         if !self.drawing && self.smooth_path.len() > 0{
             for vtx in 1..self.smooth_path.len(){
-                canvas.circle(self.smooth_path[vtx].x as i16, self.smooth_path[vtx].y as i16, 3, Color::RGB(0, 0, 0)).unwrap();
+                canvas.draw_rect(Rect::new(
+                    self.smooth_path[vtx].x-2,
+                    self.smooth_path[vtx].y-2,
+                    4,
+                    4
+                )).unwrap();
+                //canvas.circle(self.smooth_path[vtx].x as i16, self.smooth_path[vtx].y as i16, 3, Color::RGB(0, 0, 0)).unwrap();
             }
         }
 

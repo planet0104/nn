@@ -17,6 +17,7 @@ use std::path::Path;
 use sdl2::rect::Rect;
 use sdl2::render::TextureQuery;
 use sdl2::surface::Surface;
+use controller::Controller;
 
 mod vector_2d;
 mod controller;
@@ -79,12 +80,16 @@ fn main() {
 
     let mut controller = controller::Controller::new();
 
-    match controller.train_network(){
-        Ok(_) => println!("网络训练成功."),
-        Err(err) => println!("网络训练失败! {}", err)
-    }
+    let train = 2;
 
-    //write_vectors(&mut controller);
+    if train == 0{
+        match controller.train_network(){
+            Ok(_) => println!("网络训练成功."),
+            Err(err) => println!("网络训练失败! {}", err)
+        }
+    }else if train == 1{
+        write_vectors();
+    }
 
     let texture_creator = canvas.texture_creator();
     let bmp_surface = Surface::load_bmp("ji.bmp").unwrap();
@@ -95,6 +100,60 @@ fn main() {
     controller.render(&mut canvas);
     if draw{
         canvas.copy(&texture, None, Some(Rect::new(0, 0, 520, 520))).unwrap();
+        canvas.present();
+    }
+
+    if train == 2{
+        canvas.set_draw_color(Color::RGB(255, 255, 255));
+        canvas.clear();
+
+        //https://juejin.im/post/5b207a9af265da6e4b7a9dd5
+        //https://github.com/jackschaedler/handwriting-recognition
+        // 一、Curvature 曲率(8个)
+        // 二、Corners 拐角(小于某个度数)
+
+        //稀释点
+        let mut points = vec![];
+        let mut i = 0;
+        while i<STROKE_POINTS_HENG_ZHE_ZHE_PIE.len(){
+            points.push(Point::new(STROKE_POINTS_HENG_ZHE_ZHE_PIE[i].0, STROKE_POINTS_HENG_ZHE_ZHE_PIE[i].1));
+            i += 3;
+        }
+
+        //平滑
+        let smooth_factor = 0.75;
+        let mut smooth_points = vec![points[0].clone()];
+        for i in 1..points.len(){
+            let p1 = smooth_points[i-1];
+            let p2 = points[i];
+            smooth_points.push(
+                Point::new(
+                    (p1.x as f32*smooth_factor+(1.0-smooth_factor)*p2.x as f32) as i32,
+                    (p1.y as f32*smooth_factor+(1.0-smooth_factor)*p2.y as f32) as i32
+                )
+            );
+        }
+
+        //细化
+        let thinning_size = 6;
+        let mut thinning_points = vec![smooth_points[0].clone()];
+        let mut j = 0;
+        for i in 1..smooth_points.len(){
+            let si = smooth_points[i];
+            let tj = thinning_points[j];
+            if si.x-tj.x >= thinning_size || si.y-tj.y  >= thinning_size{
+                thinning_points.push(Point::new(si.x, si.y));
+                j += 1;
+            }
+        }
+
+        
+        canvas.set_draw_color(Color::RGB(50, 50, 50));
+        canvas.draw_lines(points.as_slice()).unwrap();
+        //canvas.set_draw_color(Color::RGB(0, 0, 255));
+        //canvas.draw_lines(smooth_points.as_slice()).unwrap();
+        canvas.set_draw_color(Color::RGB(255, 0, 0));
+        canvas.draw_lines(thinning_points.as_slice()).unwrap();
         canvas.present();
     }
 
@@ -147,7 +206,7 @@ fn main() {
     }
 }
 
-fn write_vectors(controller:&mut controller::Controller){
+fn write_vectors(){
     let strokes = vec![
         //横提
         STROKE_POINTS_HENG_TI.to_vec(),
@@ -187,16 +246,44 @@ fn write_vectors(controller:&mut controller::Controller){
     ];
 
     let mut vectors = String::new();
+    //横(左-右)
+    let mut vector_heng1 = vec![];
+    //横(右-左)
+    let mut vector_heng2 = vec![];
+    let mut vector_shu = vec![];
+    //竖
+    for _ in 0..controller::NUM_VECTORS{
+        vector_heng1.push(1.0);
+        vector_heng1.push(0.0);
+        vector_heng2.push(-1.0);
+        vector_heng2.push(0.0);
+        vector_shu.push(0.0);
+        vector_shu.push(1.0);
+    }
+    vectors.push_str(&format!("{:?},\n", vector_heng1));
+    vectors.push_str(&format!("{:?},\n", vector_heng2));
+    vectors.push_str(&format!("{:?},\n", vector_shu));
+
     for stroke in strokes{
-        controller.clear();
+        let mut points = vec![];
         for point in stroke{
-            controller.add_point(Point::new(point.0, point.1));
+            points.push(Point::new(point.0, point.1));
         }
-        if controller.smooth(){
-            //创建向量
-            controller.create_vectors();
-        }
-        vectors.push_str(&format!("{:?},\n", controller.vectors()));
+        let half_num = controller::NUM_VECTORS as usize/3;
+        //首先创建整体笔画的向量数组
+        let smooth_path = Controller::smooth(&points, half_num*2+1).unwrap();
+        //创建第一段向量
+        let mut left_vectors = Controller::create_vectors(&smooth_path);
+
+        //然后取中间三分之一部分的向量数组
+        let len = points.len()/3;
+        let center_points = points.get(len..len*2).unwrap().to_vec();
+        let smooth_path = Controller::smooth(&center_points, half_num+1).unwrap();
+        //创建第二段向量
+        let mut right_vectors = Controller::create_vectors(&smooth_path);
+
+        left_vectors.append(&mut right_vectors);
+        vectors.push_str(&format!("{:?},\n", left_vectors));
     }
     use std::fs::File;
     let mut file = File::create("vectors.txt").unwrap();

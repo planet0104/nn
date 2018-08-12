@@ -8,4 +8,4 @@ rand = "*"
 
 [dependencies.sdl2]
 version = "0.31.0"
-features = ["bundled", "static-link", "gfx"]
+features = ["bundled", "static-link"]
