@@ -13,3 +13,7 @@ https://www.soundsnap.com/
 http://zhongguose.com/
 趣味打字
 http://magickeyboard.io/
+
+
+Tesseract-OCR 汉字识别和训练
+http://www.cnblogs.com/wzben/p/5930538.html
