@@ -1,7 +1,11 @@
 use std;
-
 use std::time::{Duration, Instant};
-//
+
+/*
+ 二维单笔画识别器，专为基于手势的用户界面的快速原型设计而设计
+ use_protractor 可提高识别速度
+*/
+
 // DollarRecognizer constants
 //
 

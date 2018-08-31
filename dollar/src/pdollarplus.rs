@@ -1,11 +1,11 @@
 use std;
+use std::f64::consts::PI;
 use std::time::{Duration, Instant};
-
 /*
-Point Cloud识别器
-PDollarRecognizer识别器在没有NDollarRecognizer的组合开销的情况下执行unistroke和multistroke识别，因为它忽略了笔划编号，顺序和方向。
-虽然$ P代码的大约一半来自$ 1，与$ 1和$ N不同，$ P并不表示手势作为有序点（即笔画），而是作为无序点云。通过将手势表示为点云，$ P可以等效地处理unistrokes和multistrokes，并且没有$ N的组合开销，因为笔划数，顺序和方向都被忽略。当比较两个点云时，$ P使用匈牙利算法的近似找到两个二分图之间的经典指派问题的解。
-*/
+$ P + Point-Cloud识别器是一款2-D手势识别器，专为基于手势的用户界面进行快速原型设计，尤其适用于视力不佳的人。 
+$ P +提高了$ P Point-Cloud识别器的准确性。 
+$ P +是通过仔细研究低视力人群的中风姿势表现而开发的，这为如何为所有用户提高$ P提供了见解。
+ */
 
 const NUM_POINT_CLOUDS: usize = 16;
 const NUM_POINTS: usize = 32;
@@ -13,7 +13,36 @@ const ORIGIN: Point = Point {
     x: 0.0,
     y: 0.0,
     id: 0,
+    angle: 0.0,
 };
+
+#[derive(Debug, Clone)]
+pub struct Point {
+    pub x: f64,
+    pub y: f64,
+    pub id: usize,
+    pub angle: f64, // normalized turning angle, $P+
+}
+
+impl Point {
+    pub fn new<T: Into<f64>>(x: T, y: T, id: usize) -> Point {
+        Point {
+            x: x.into(),
+            y: y.into(),
+            id,
+            angle: 0.0,
+        }
+    }
+
+    pub fn with_angle<T: Into<f64>>(x: T, y: T, id: usize, angle: f64) -> Point {
+        Point {
+            x: x.into(),
+            y: y.into(),
+            id,
+            angle,
+        }
+    }
+}
 
 //
 // Result class
@@ -31,23 +60,6 @@ impl Result {
             name: name.to_string(),
             score,
             ms,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Point {
-    pub x: f64,
-    pub y: f64,
-    pub id: usize,
-}
-
-impl Point {
-    pub fn new<T: Into<f64>>(x: T, y: T, id: usize) -> Point {
-        Point {
-            x: x.into(),
-            y: y.into(),
-            id,
         }
     }
 }
@@ -78,12 +90,12 @@ impl Default for PointCloud {
     }
 }
 
-pub struct PDollarRecognizer {
+pub struct PDollarPlusRecognizer {
     point_clouds: Vec<PointCloud>,
 }
 
-impl PDollarRecognizer {
-    pub fn new() -> PDollarRecognizer {
+impl PDollarPlusRecognizer {
+    pub fn new() -> PDollarPlusRecognizer {
         let mut point_clouds = vec![];
 
         point_clouds.push(PointCloud::new(
@@ -357,18 +369,20 @@ impl PDollarRecognizer {
             ],
         ));
 
-        PDollarRecognizer { point_clouds }
+        PDollarPlusRecognizer { point_clouds }
     }
 
     pub fn recognize(&self, points: Vec<Point>) -> Result {
         let t0 = Instant::now();
         let points = translate_to(&scale(&resample(points, NUM_POINTS)), &ORIGIN);
+        let points = compute_normalized_turning_angle(&points); // $P+
 
         let mut b = std::f64::MAX;
         let mut u = -1;
         for i in 0..self.point_clouds.len() {
             // for each point-cloud template
-            let d = greedy_cloud_match(&points, &self.point_clouds[i]);
+            let d = cloud_distance(&points, &self.point_clouds[i].points)
+                .min(cloud_distance(&self.point_clouds[i].points, &points)); // $P+
             if d < b {
                 b = d; // best (least) distance
                 u = i as i32; // point-cloud index
@@ -378,11 +392,11 @@ impl PDollarRecognizer {
         let t1 = duration_to_milis(&t0.elapsed());
 
         if u == -1 {
-            Result::new("No match.", 0.0, t1)
+            Result::new("No match.", -1.0, t1)
         } else {
             Result::new(
                 &self.point_clouds[u as usize].name,
-                ((b - 2.0) / -2.0).max(0.0),
+                b, // $P+
                 t1,
             )
         }
@@ -411,48 +425,70 @@ impl PDollarRecognizer {
     }
 }
 
-pub fn duration_to_milis(duration: &Duration) -> f64 {
-    duration.as_secs() as f64 * 1000.0 + duration.subsec_nanos() as f64 / 1_000_000.0
-}
-
-fn greedy_cloud_match(points: &Vec<Point>, p: &PointCloud) -> f64 {
-    let e = 0.50;
-    let step = (points.len() as f64).powf(1.0 - e).floor() as usize;
-    let mut min = std::f64::MAX;
-    for i in (0..points.len()).step_by(step) {
-        let d1 = cloud_distance(&points, &p.points, i);
-        let d2 = cloud_distance(&p.points, &points, i);
-        min = min.min(d1.min(d2));
-    }
-    min
-}
-
-fn cloud_distance(pts1: &Vec<Point>, pts2: &Vec<Point>, start: usize) -> f64 {
-    let mut matched = vec![false; pts1.len()];
+fn cloud_distance(pts1: &Vec<Point>, pts2: &Vec<Point>) -> f64 {
+    // revised for $P+
+    let mut matched = vec![false; pts1.len()]; // pts1.length == pts2.length
     let mut sum = 0.0;
-    let mut i = start;
-
-    while {
+    for i in 0..pts1.len() {
         let mut index = -1;
         let mut min = std::f64::MAX;
-        for j in 0..matched.len() {
-            if !matched[j] {
-                let d = distance(&pts1[i], &pts2[j]);
-                if d < min {
-                    min = d;
-                    index = j as i32;
-                }
+        for j in 0..pts1.len() {
+            let d = distance_with_angle(&pts1[i], &pts2[j]);
+            if d < min {
+                min = d;
+                index = j as i32;
             }
         }
         matched[index as usize] = true;
-        let weight = 1 - ((i - start + pts1.len()) % pts1.len()) / pts1.len();
-        sum += weight as f64 * min;
-        i = (i + 1) % pts1.len();
+        sum += min;
+    }
+    for j in 0..matched.len() {
+        if !matched[j] {
+            let mut min = std::f64::MAX;
+            for i in 0..pts1.len() {
+                let d = distance_with_angle(&pts1[i], &pts2[j]);
+                if d < min {
+                    min = d;
+                }
+            }
+            sum += min;
+        }
+    }
+    return sum;
+}
 
-        i != start
-    } {}
+fn distance_with_angle(p1: &Point, p2: &Point) -> f64 {
+    // $P+
+    let dx = p2.x - p1.x;
+    let dy = p2.y - p1.y;
+    let da = p2.angle - p1.angle;
+    (dx * dx + dy * dy + da * da).sqrt()
+}
 
-    sum
+fn compute_normalized_turning_angle(points: &Vec<Point>) -> Vec<Point> {
+    // $P+
+    let mut newpoints = vec![];
+    newpoints.push(Point::new(points[0].x, points[0].y, points[0].id)); // first point
+    for i in 1..points.len() - 1 {
+        let dx = (points[i + 1].x - points[i].x) * (points[i].x - points[i - 1].x);
+        let dy = (points[i + 1].y - points[i].y) * (points[i].y - points[i - 1].y);
+        let dn = distance(&points[i + 1], &points[i]) * distance(&points[i], &points[i - 1]);
+        let cosangle = (-1.0f64).max(1.0f64.min((dx + dy) / dn)); // ensure [-1,+1]
+        let angle = cosangle.acos() / PI; // normalized angle
+        newpoints.push(Point::with_angle(
+            points[i].x,
+            points[i].y,
+            points[i].id,
+            angle,
+        ));
+    }
+    newpoints.push(Point::new(
+        // last point
+        points[points.len() - 1].x,
+        points[points.len() - 1].y,
+        points[points.len() - 1].id,
+    ));
+    newpoints
 }
 
 fn translate_to(points: &Vec<Point>, pt: &Point) -> Vec<Point> {
@@ -546,7 +582,12 @@ fn path_length(points: &Vec<Point>) -> f64 {
 }
 
 fn distance(p1: &Point, p2: &Point) -> f64 {
+    // Euclidean distance between two points
     let dx = p2.x - p1.x;
     let dy = p2.y - p1.y;
     (dx * dx + dy * dy).sqrt()
+}
+
+pub fn duration_to_milis(duration: &Duration) -> f64 {
+    duration.as_secs() as f64 * 1000.0 + duration.subsec_nanos() as f64 / 1_000_000.0
 }
