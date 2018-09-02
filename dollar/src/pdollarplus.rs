@@ -97,8 +97,54 @@ pub struct PDollarPlusRecognizer {
 impl PDollarPlusRecognizer {
     pub fn new() -> PDollarPlusRecognizer {
         let mut point_clouds = vec![];
+        PDollarPlusRecognizer { point_clouds }
+    }
 
-        point_clouds.push(PointCloud::new(
+    pub fn recognize(&self, points: Vec<Point>) -> Result {
+        let t0 = Instant::now();
+        let points = translate_to(&scale(&resample(points, NUM_POINTS)), &ORIGIN);
+        let points = compute_normalized_turning_angle(&points); // $P+
+
+        let mut b = std::f64::MAX;
+        let mut u = -1;
+        for i in 0..self.point_clouds.len() {
+            // for each point-cloud template
+            let d = cloud_distance(&points, &self.point_clouds[i].points)
+                .min(cloud_distance(&self.point_clouds[i].points, &points)); // $P+
+            if d < b {
+                b = d; // best (least) distance
+                u = i as i32; // point-cloud index
+            }
+        }
+
+        let t1 = duration_to_milis(&t0.elapsed());
+
+        if u == -1 {
+            Result::new("No match.", -1.0, t1)
+        } else {
+            Result::new(
+                &self.point_clouds[u as usize].name,
+                b, // $P+
+                t1,
+            )
+        }
+    }
+
+    pub fn add_gesture(&mut self, name: &str, points: Vec<Point>) -> usize {
+        println!("add_gesture name={}", name);
+        self.point_clouds.push(PointCloud::new(name, points));
+        let mut num = 0;
+        for i in 0..self.point_clouds.len() {
+            if self.point_clouds[i].name == name {
+                num += 1;
+            }
+        }
+        num
+    }
+
+    pub fn init_demo_gesture(&mut self){
+        self.point_clouds.clear();
+        self.point_clouds.push(PointCloud::new(
             "T",
             vec![
                 Point::new(30, 7, 1),
@@ -107,7 +153,7 @@ impl PDollarPlusRecognizer {
                 Point::new(66, 87, 2),
             ],
         ));
-        point_clouds.push(PointCloud::new(
+        self.point_clouds.push(PointCloud::new(
             "N",
             vec![
                 Point::new(177, 92, 1),
@@ -118,7 +164,7 @@ impl PDollarPlusRecognizer {
                 Point::new(247, 1, 3),
             ],
         ));
-        point_clouds.push(PointCloud::new(
+        self.point_clouds.push(PointCloud::new(
             "D",
             vec![
                 Point::new(345, 9, 1),
@@ -149,7 +195,7 @@ impl PDollarPlusRecognizer {
                 Point::new(349, 87, 2),
             ],
         ));
-        point_clouds.push(PointCloud::new(
+        self.point_clouds.push(PointCloud::new(
             "P",
             vec![
                 Point::new(507, 8, 1),
@@ -177,7 +223,7 @@ impl PDollarPlusRecognizer {
                 Point::new(510, 55, 2),
             ],
         ));
-        point_clouds.push(PointCloud::new(
+        self.point_clouds.push(PointCloud::new(
             "X",
             vec![
                 Point::new(30, 146, 1),
@@ -186,7 +232,7 @@ impl PDollarPlusRecognizer {
                 Point::new(106, 146, 2),
             ],
         ));
-        point_clouds.push(PointCloud::new(
+        self.point_clouds.push(PointCloud::new(
             "H",
             vec![
                 Point::new(188, 137, 1),
@@ -197,7 +243,7 @@ impl PDollarPlusRecognizer {
                 Point::new(241, 225, 3),
             ],
         ));
-        point_clouds.push(PointCloud::new(
+        self.point_clouds.push(PointCloud::new(
             "I",
             vec![
                 Point::new(371, 149, 1),
@@ -208,7 +254,7 @@ impl PDollarPlusRecognizer {
                 Point::new(401, 221, 3),
             ],
         ));
-        point_clouds.push(PointCloud::new(
+        self.point_clouds.push(PointCloud::new(
             "exclamation",
             vec![
                 Point::new(526, 142, 1),
@@ -216,11 +262,11 @@ impl PDollarPlusRecognizer {
                 Point::new(526, 221, 2),
             ],
         ));
-        point_clouds.push(PointCloud::new(
+        self.point_clouds.push(PointCloud::new(
             "line",
             vec![Point::new(12, 347, 1), Point::new(119, 347, 1)],
         ));
-        point_clouds.push(PointCloud::new(
+        self.point_clouds.push(PointCloud::new(
             "five-point star",
             vec![
                 Point::new(177, 396, 1),
@@ -231,7 +277,7 @@ impl PDollarPlusRecognizer {
                 Point::new(184, 397, 1),
             ],
         ));
-        point_clouds.push(PointCloud::new(
+        self.point_clouds.push(PointCloud::new(
             "null",
             vec![
                 Point::new(382, 310, 1),
@@ -278,7 +324,7 @@ impl PDollarPlusRecognizer {
                 Point::new(337, 390, 2),
             ],
         ));
-        point_clouds.push(PointCloud::new(
+        self.point_clouds.push(PointCloud::new(
             "arrowhead",
             vec![
                 Point::new(506, 349, 1),
@@ -288,7 +334,7 @@ impl PDollarPlusRecognizer {
                 Point::new(525, 388, 2),
             ],
         ));
-        point_clouds.push(PointCloud::new(
+        self.point_clouds.push(PointCloud::new(
             "pitchfork",
             vec![
                 Point::new(38, 470, 1),
@@ -314,7 +360,7 @@ impl PDollarPlusRecognizer {
                 Point::new(62, 571, 2),
             ],
         ));
-        point_clouds.push(PointCloud::new(
+        self.point_clouds.push(PointCloud::new(
             "six-point star",
             vec![
                 Point::new(177, 554, 1),
@@ -327,7 +373,7 @@ impl PDollarPlusRecognizer {
                 Point::new(183, 490, 2),
             ],
         ));
-        point_clouds.push(PointCloud::new(
+        self.point_clouds.push(PointCloud::new(
             "asterisk",
             vec![
                 Point::new(325, 499, 1),
@@ -338,7 +384,7 @@ impl PDollarPlusRecognizer {
                 Point::new(371, 571, 3),
             ],
         ));
-        point_clouds.push(PointCloud::new(
+        self.point_clouds.push(PointCloud::new(
             "half-note",
             vec![
                 Point::new(546, 465, 1),
@@ -368,56 +414,16 @@ impl PDollarPlusRecognizer {
                 Point::new(546, 536, 2),
             ],
         ));
-
-        PDollarPlusRecognizer { point_clouds }
-    }
-
-    pub fn recognize(&self, points: Vec<Point>) -> Result {
-        let t0 = Instant::now();
-        let points = translate_to(&scale(&resample(points, NUM_POINTS)), &ORIGIN);
-        let points = compute_normalized_turning_angle(&points); // $P+
-
-        let mut b = std::f64::MAX;
-        let mut u = -1;
-        for i in 0..self.point_clouds.len() {
-            // for each point-cloud template
-            let d = cloud_distance(&points, &self.point_clouds[i].points)
-                .min(cloud_distance(&self.point_clouds[i].points, &points)); // $P+
-            if d < b {
-                b = d; // best (least) distance
-                u = i as i32; // point-cloud index
-            }
-        }
-
-        let t1 = duration_to_milis(&t0.elapsed());
-
-        if u == -1 {
-            Result::new("No match.", -1.0, t1)
-        } else {
-            Result::new(
-                &self.point_clouds[u as usize].name,
-                b, // $P+
-                t1,
-            )
-        }
-    }
-
-    pub fn add_gesture(&mut self, name: &str, points: Vec<Point>) -> usize {
-        println!("add_gesture name={}", name);
-        self.point_clouds.push(PointCloud::new(name, points));
-        let mut num = 0;
-        for i in 0..self.point_clouds.len() {
-            if self.point_clouds[i].name == name {
-                num += 1;
-            }
-        }
-        num
     }
 
     pub fn delete_user_gestures(&mut self) -> usize {
         self.point_clouds
             .resize(NUM_POINT_CLOUDS, PointCloud::default());
         NUM_POINT_CLOUDS
+    }
+
+    pub fn clear_gestures(&mut self){
+        self.point_clouds.clear();
     }
 
     pub fn point_clouds(&self) -> &Vec<PointCloud> {

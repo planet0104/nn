@@ -5,3 +5,5 @@ authors = ["planet0104 <planet0104@gmail.com>"]
 
 [dependencies]
 piston_window = "0.80.0"
+reqwest = "0.8.8"
+bincode = "1.0.1"

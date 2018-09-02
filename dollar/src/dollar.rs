@@ -120,11 +120,32 @@ pub struct DollarRecognizer {
 impl DollarRecognizer {
     pub fn new() -> DollarRecognizer {
         // constructor
-        //
-        // one built-in unistroke per gesture type
-        //
-        let mut unistrokes = vec![];
-        unistrokes.push(Unistroke::new(
+        DollarRecognizer { unistrokes: vec![] }
+    }
+
+    pub fn unistrokes(&self) -> &Vec<Unistroke> {
+        &self.unistrokes
+    }
+
+    pub fn delete_user_gestures(&mut self) -> usize {
+        self.unistrokes.resize(NUM_UNISTROKES, Unistroke::default());
+        NUM_UNISTROKES
+    }
+
+    pub fn add_gesture(&mut self, name: &str, points: Vec<Point>) -> usize {
+        self.unistrokes.push(Unistroke::new(name, points)); // append new unistroke
+        let mut num = 0;
+        for i in 0..self.unistrokes.len() {
+            if self.unistrokes[i].name == name {
+                num += 1;
+            }
+        }
+        num
+    }
+
+    pub fn init_demo_gesture(&mut self){
+        self.unistrokes.clear();
+        self.unistrokes.push(Unistroke::new(
             "triangle",
             vec![
                 Point::new(137, 139),
@@ -195,7 +216,7 @@ impl DollarRecognizer {
                 Point::new(136, 148),
             ],
         ));
-        unistrokes.push(Unistroke::new(
+        self.unistrokes.push(Unistroke::new(
             "x",
             vec![
                 Point::new(87, 142),
@@ -251,7 +272,7 @@ impl DollarRecognizer {
                 Point::new(87, 224),
             ],
         ));
-        unistrokes.push(Unistroke::new(
+        self.unistrokes.push(Unistroke::new(
             "rectangle",
             vec![
                 Point::new(78, 149),
@@ -338,7 +359,7 @@ impl DollarRecognizer {
                 Point::new(76, 133),
             ],
         ));
-        unistrokes.push(Unistroke::new(
+        self.unistrokes.push(Unistroke::new(
             "circle",
             vec![
                 Point::new(127, 141),
@@ -387,7 +408,7 @@ impl DollarRecognizer {
                 Point::new(126, 139),
             ],
         ));
-        unistrokes.push(Unistroke::new(
+        self.unistrokes.push(Unistroke::new(
             "check",
             vec![
                 Point::new(91, 185),
@@ -441,7 +462,7 @@ impl DollarRecognizer {
                 Point::new(173, 118),
             ],
         ));
-        unistrokes.push(Unistroke::new(
+        self.unistrokes.push(Unistroke::new(
             "caret",
             vec![
                 Point::new(79, 245),
@@ -500,7 +521,7 @@ impl DollarRecognizer {
                 Point::new(182, 257),
             ],
         ));
-        unistrokes.push(Unistroke::new(
+        self.unistrokes.push(Unistroke::new(
             "zig-zag",
             vec![
                 Point::new(307, 216),
@@ -511,7 +532,7 @@ impl DollarRecognizer {
                 Point::new(418, 186),
             ],
         ));
-        unistrokes.push(Unistroke::new(
+        self.unistrokes.push(Unistroke::new(
             "arrow",
             vec![
                 Point::new(68, 222),
@@ -582,7 +603,7 @@ impl DollarRecognizer {
                 Point::new(164, 196),
             ],
         ));
-        unistrokes.push(Unistroke::new(
+        self.unistrokes.push(Unistroke::new(
             "left square bracket",
             vec![
                 Point::new(140, 124),
@@ -663,7 +684,7 @@ impl DollarRecognizer {
                 Point::new(159, 237),
             ],
         ));
-        unistrokes.push(Unistroke::new(
+        self.unistrokes.push(Unistroke::new(
             "right square bracket",
             vec![
                 Point::new(112, 138),
@@ -713,7 +734,7 @@ impl DollarRecognizer {
                 Point::new(112, 238),
             ],
         ));
-        unistrokes.push(Unistroke::new(
+        self.unistrokes.push(Unistroke::new(
             "v",
             vec![
                 Point::new(89, 164),
@@ -765,7 +786,7 @@ impl DollarRecognizer {
                 Point::new(166, 146),
             ],
         ));
-        unistrokes.push(Unistroke::new(
+        self.unistrokes.push(Unistroke::new(
             "delete",
             vec![
                 Point::new(123, 129),
@@ -823,7 +844,7 @@ impl DollarRecognizer {
                 Point::new(180, 125),
             ],
         ));
-        unistrokes.push(Unistroke::new(
+        self.unistrokes.push(Unistroke::new(
             "left curly brace",
             vec![
                 Point::new(150, 116),
@@ -886,7 +907,7 @@ impl DollarRecognizer {
                 Point::new(151, 221),
             ],
         ));
-        unistrokes.push(Unistroke::new(
+        self.unistrokes.push(Unistroke::new(
             "right curly brace",
             vec![
                 Point::new(117, 132),
@@ -961,7 +982,7 @@ impl DollarRecognizer {
                 Point::new(115, 253),
             ],
         ));
-        unistrokes.push(Unistroke::new(
+        self.unistrokes.push(Unistroke::new(
             "star",
             vec![
                 Point::new(75, 250),
@@ -1075,7 +1096,7 @@ impl DollarRecognizer {
                 Point::new(69, 252),
             ],
         ));
-        unistrokes.push(Unistroke::new(
+        self.unistrokes.push(Unistroke::new(
             "pigtail",
             vec![
                 Point::new(81, 219),
@@ -1145,28 +1166,10 @@ impl DollarRecognizer {
                 Point::new(201, 211),
             ],
         ));
-
-        DollarRecognizer { unistrokes }
     }
 
-    pub fn unistrokes(&self) -> &Vec<Unistroke> {
-        &self.unistrokes
-    }
-
-    pub fn delete_user_gestures(&mut self) -> usize {
-        self.unistrokes.resize(NUM_UNISTROKES, Unistroke::default());
-        NUM_UNISTROKES
-    }
-
-    pub fn add_gesture(&mut self, name: &str, points: Vec<Point>) -> usize {
-        self.unistrokes.push(Unistroke::new(name, points)); // append new unistroke
-        let mut num = 0;
-        for i in 0..self.unistrokes.len() {
-            if self.unistrokes[i].name == name {
-                num += 1;
-            }
-        }
-        num
+    pub fn clear_gestures(&mut self){
+        self.unistrokes.clear();
     }
 
     //
