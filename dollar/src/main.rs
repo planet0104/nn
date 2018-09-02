@@ -20,10 +20,18 @@ fn main() {
     //point_cloud_plus_demo();
 
     /*
-    网页解析的笔画中，“[个别]走之旁”的字(边，还...)，这些字要单独标记，最后一笔的坐标点数组要反过来。(走之旁共220个字: http://www.hydcd.com/zidian/bushou/306.htm)
-    有些特别复杂的字查询不到笔画，这写字要过滤掉。
+    APP名称：拾字/拾笔
+    1、主页由候选区、写字区组成。
+    2、候选区，可以切换文章。（文章可以写入、选字、内置分类文章、服务器同步文章）
+    3、写字区，可以回退、发音、展示笔画动画。
+    4、可查看练字记录，总共写对了多少字。
 
-    网页解析的笔画点数组，需要进行填充，笔画点数少于60，要在两点之间插入新的点。
+    程序界面用HTML+JS实现
+    rust通过执行js来操作。
+
+
+
+    笔画点数组，需要进行填充，笔画点数少于60，要在两点之间插入新的点。
 
     每个笔画单独进行识别。
     每写一笔之前，创建一个空的单笔识别器，并加入该笔画，然后判定用户写完的笔画和此笔画匹配度，匹配度为得分。
@@ -93,7 +101,7 @@ fn main() {
     // println!("{:?}", strokes);
     // let strokes = strokes.1;
 
-    let strokes = get_strokes_from_file('繁');
+    let strokes = get_strokes_from_file('七');
     
 
     let mut window: PistonWindow = WindowSettings::new("dollar", [900, 900])
