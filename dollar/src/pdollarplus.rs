@@ -67,7 +67,7 @@ impl Result {
 #[derive(Debug, Clone)]
 pub struct PointCloud {
     name: String,
-    points: Vec<Point>,
+    pub points: Vec<Point>,
 }
 
 impl PointCloud {

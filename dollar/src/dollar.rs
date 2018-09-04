@@ -1367,7 +1367,7 @@ fn centroid(points: &Vec<Point>) -> Point {
     Point::new(x, y)
 }
 
-fn resample(mut points: Vec<Point>, n: usize) -> Vec<Point> {
+pub fn resample(mut points: Vec<Point>, n: usize) -> Vec<Point> {
     let len = path_length(&points) / (n as f64 - 1.0); // interval length
     let mut dist = 0.0;
     let mut newpoints = vec![points[0].clone()];
