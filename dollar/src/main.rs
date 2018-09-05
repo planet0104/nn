@@ -10,6 +10,8 @@ use std::fs::File;
 use std::io::prelude::*;
 use bincode::{serialize, deserialize};
 use dollar::DollarRecognizer;
+const STROKE_ORDER_DATA:&[u8] = include_bytes!("../stroke_order_data");
+const ORIGINAL_STROKE_DATA:&[u8] = include_bytes!("../original_stroke_data");
 
 //http://depts.washington.edu/madlab/proj/dollar/
 fn main() {
@@ -40,104 +42,160 @@ fn main() {
     写字板中文章预览，写对一次标黑色，写错一字整个字标红色，写错一划，单独笔画标红。
     */
 
-    let strokes = get_strokes_from_file('边');
-    // use dollar::{DollarRecognizer, Point};
-    // let mut doller = DollarRecognizer::new();
+    use std::collections::HashMap;
+    use std::fs;
 
-    let mut stroke_id = 0;
-    use pdollarplus::{PDollarPlusRecognizer, Point};
-    let mut pdollarplus = PDollarPlusRecognizer::new();
-    for i in 0..strokes.len(){
-        pdollarplus.add_gesture(&format!("第{}笔", i), strokes[i].iter().map(|p|{Point::new(p[0] as f64, p[1] as f64, 1)}).collect());
-    }
-
-    let mut points: Vec<Point> = vec![];
-    let mut draw = false;
-
-    // let mut window: PistonWindow = WindowSettings::new("dollar", [700, 500])
-    //     .exit_on_esc(true)
-    //     .build()
-    //     .unwrap();
-    // while let Some(event) = window.next() {
-    //     window.draw_2d(&event, |context, graphics| {
-    //         clear([1.0; 4], graphics);
-
-    //         //绘制字体
-    //         for point in &font_points{
-    //             ellipse(
-    //                 [150.0, 0.0, 0.0, point.2],
-    //                 [point.0 as f64 * 5.0, point.1 as f64 * 5.0, 1.0, 1.0],
-    //                 context.transform,
-    //                 graphics,
-    //             );
-    //         }
-
-    //         //虚拟线
-    //         for pc in pdollarplus.point_clouds(){
-    //             for p in &pc.points{
-    //                 ellipse(
-    //                     [0.0, 0.0, 255.0, 255.0],
-    //                     [p.x*300.0+300.0, p.y*300.0+200.0, 5.0, 5.0],
-    //                     context.transform,
-    //                     graphics,
-    //                 );
+    //创建笔画顺序数据库
+    // let mut stroke_orders_map:HashMap<char, Vec<usize>>= HashMap::new();
+    // for entry in fs::read_dir("strokes").unwrap() {
+    //     let dir = entry.unwrap();
+    //     let file_name = dir.file_name().into_string().unwrap();
+    //     let ch = file_name.split(".").next().unwrap().chars().next().unwrap();
+    //     //获取unicode码
+    //     let unicode = ch.escape_unicode().to_string().replace("\\", "").replace("u{", "").replace("}", "");
+    //     let dict_url = format!("http://dict.r12345.com/0x{}.html", unicode);
+    //     let dict_html = fetch(&dict_url);
+    //     let mut stroke_orders:Vec<usize> = vec![];
+    //     if let Some(j2) = dict_html.split("笔顺编号:</span>").skip(1).next(){
+    //         if let Some(s) = j2.split("<br>").next(){
+    //             for c in s.chars(){
+    //                 if let Ok(u) = format!("{}", c).parse::<usize>(){
+    //                     stroke_orders.push(u);
+    //                 }
     //             }
     //         }
-
-    //         let mut current_stroke_id = 1;
-    //         let mut i = 1;
-
-    //         while i < points.len() {
-    //             ellipse(
-    //                 [255.0, 0.0, 0.0, 255.0],
-    //                 [points[i - 1].x, points[i - 1].y, 2.0, 2.0],
-    //                 context.transform,
-    //                 graphics,
-    //             );
-
-    //             if current_stroke_id == points[i].id {
-    //                 line(
-    //                     [0.0, 0.0, 0.0, 255.0],
-    //                     0.5,
-    //                     [points[i - 1].x, points[i - 1].y, points[i].x, points[i].y],
-    //                     context.transform,
-    //                     graphics,
-    //                 );
-    //             } else {
-    //                 current_stroke_id = points[i].id;
-    //                 i += 1;
-    //             }
-    //             i += 1;
-    //         }
-    //     });
-
-    //     if let Some(button) = event.press_args() {
-    //         if button == Button::Mouse(MouseButton::Left) {
-    //             draw = true;
-    //             stroke_id += 1;
-    //         }
-    //         if button == Button::Mouse(MouseButton::Right) {
-    //             //开始识别
-    //             let result = pdollarplus.recognize(points.clone());
-    //             println!(
-    //                 "结果: {} ({}) in {} ms.",
-    //                 result.name, result.score, result.ms
-    //             );
-    //             stroke_id = 0;
-    //             points.clear();
-    //         }
-    //     };
-    //     if let Some(button) = event.release_args() {
-    //         if button == Button::Mouse(MouseButton::Left) {
-    //             draw = false;
-    //         }
-    //     };
-    //     if draw {
-    //         if let Some(pos) = event.mouse_cursor_args() {
-    //             points.push(Point::new(pos[0], pos[1], stroke_id));
-    //         };
     //     }
+    //     println!("stroke_orders={:?}", stroke_orders);
+    //     stroke_orders_map.insert(ch, stroke_orders);
     // }
+    // println!("文字数量:{}", stroke_orders_map.len());
+    // //写入数据
+    // let encoded: Vec<u8> = serialize(&stroke_orders_map).unwrap();
+    // let mut file = File::create("stroke_order_data").unwrap();
+    // file.write_all(&encoded).unwrap();
+
+    //创建笔画数据库
+    // let mut map:HashMap<char, Vec<Vec<[i32;2]>>>= HashMap::new();
+    // for entry in fs::read_dir("strokes").unwrap() {
+    //     let dir = entry.unwrap();
+    //     let file_name = dir.file_name().into_string().unwrap();
+    //     let ch = file_name.split(".").next().unwrap().chars().next().unwrap();
+    //     let data = get_strokes_from_file(ch);
+    //     map.insert(ch, data);
+    // }
+    // println!("文字数量:{}", map.len());
+    // //写入数据
+    // let encoded: Vec<u8> = serialize(&map).unwrap();
+    // let mut file = File::create("stroke_data").unwrap();
+    // file.write_all(&encoded).unwrap();
+
+
+    //获取原始得笔画文件
+    // let mut map:HashMap<char, Vec<Vec<[i32;2]>>>= HashMap::new();
+    // for entry in fs::read_dir("strokes").unwrap() {
+    //     let dir = entry.unwrap();
+    //     let file_name = dir.file_name().into_string().unwrap();
+    //     let ch = file_name.split(".").next().unwrap().chars().next().unwrap();
+    //     let data = fetch_original_stroke(&ch).unwrap();
+    //     map.insert(ch, data.1);
+    // }
+    // println!("文字数量:{}", map.len());
+    // let encoded: Vec<u8> = serialize(&map).unwrap();
+    // let mut file = File::create("original_stroke_data").unwrap();
+    // file.write_all(&encoded).unwrap();
+
+    //根据原始笔画文件，创建新的笔画数据
+    let original_map:HashMap<char, Vec<Vec<[i32;2]>>> = deserialize(&ORIGINAL_STROKE_DATA[..]).unwrap();
+    let stroke_orders_map:HashMap<char, Vec<usize>> = deserialize(&STROKE_ORDER_DATA[..]).unwrap();
+    let mut map:HashMap<char, Vec<Vec<[i32;2]>>> = HashMap::new();
+    for entry in fs::read_dir("strokes").unwrap() {
+        let dir = entry.unwrap();
+        let file_name = dir.file_name().into_string().unwrap();
+        let ch = file_name.split(".").next().unwrap().chars().next().unwrap();
+        let strokes = original_map.get(&ch).unwrap();
+        let stroke_orders = stroke_orders_map.get(&ch).unwrap();
+
+        let mut new_data = vec![];
+
+        let mut si = 0;
+        for points in strokes{
+            //如果是横(提)，只要起点和终点
+            let points = 
+            if stroke_orders.len()>si && stroke_orders[si] == 1{
+                //y最大的点为起点
+                let mut lowest = 0;
+                for pi in 0..points.len(){
+                    if points[pi][1]>points[lowest][1]{
+                        lowest = pi;
+                    }
+                }
+                let mut newpoints = vec![points[lowest], points[points.len()-1]];
+                //如果起点x大于终点x，反过来
+                if newpoints[0][0]>newpoints[1][0]{
+                    vec![newpoints[1], newpoints[0]]
+                }else{
+                    newpoints
+                }
+            }else{
+                points.clone()
+            };
+            //折线中间的突起去掉
+            let mut new_points:Vec<[i32;2]> = vec![];
+            for [x, y] in points{
+                let len = new_points.len();
+                if len>=2 && new_points[len-2][0] == x &&
+                                    new_points[len-2][1] == y{
+                        new_points.pop();
+                }else{
+                    new_points.push([x, y]);
+                }
+            }
+            //折末尾的勾去掉(如：每)
+            if stroke_orders.len()>si &&  stroke_orders[si] == 5{
+                let len = new_points.len();
+                if len>=5{
+                    //最后一个点的y和倒数第3个点的y相等
+                    if new_points[len-1][1] == new_points[len-3][1]{
+                        new_points.pop();
+                        new_points.pop();
+                    }
+                }
+            }
+            //如果当前笔画是撇，【撇开头的勾去掉】
+            if stroke_orders.len()>si &&  stroke_orders[si] == 3{
+                //如果第一个点的x小于第二个点的x，删掉第一个点
+                if new_points.len()>=3 &&
+                    new_points[0][0] < new_points[1][0]{
+                    new_points.remove(0);
+                }
+            }
+            new_data.push(new_points);
+            si += 1;
+        }
+
+        //火字旁第一笔需要反转
+        if "火灭灯灰灮灳灱灲灿灸灵灺炀灾灶灼災灻灴灹灷炉炝炆炘炎炙炬炜炕炔炅炖炊炒炞炐炂烎炈炇炋炍炄炑炗炚炛炌炏炓烁炱炭烃炫炸炻炼烂炯烀炟炽炳炮炷炧炤炢炿炡炴炨炠炵炲炶炦炪炥炾炣炩烨烛烉烖烔烠烢烥烊烟烜烦烘烩烬烤烙烧烫烡烆烚烍烌烅烕烑烐烵烓烶烒烣烄烗烮焒烞烇烻焐烯烴烱焅烲烷焖烺焌焗焕焊焓烽烾焍焋焔烼焇焈焁焂焫烿烰烸焃焀焆烳焻焧焨焤焵焿焸煱焥煑焙焯焠煚焜焮焰焱焢焝焳焽焹煀焟焬焲煐焴焺焼煡焞焛焾焷焩焪焭煜煴煒煉煙煠煩煗煬煊煖煨煲煏煸煅煳煌煤煣煺煢煇煄熍煪煰煶煫煓煟煆煋煔煵煘煁煈煂煥煍煯煃煷煝熢熚煿煼煾熕熒熗燁熄熥煽熔熘熇煹熆熉熅熎熖熁熂熓熃煻熀煛熑熐熋熌熩熣熜熝熨熠熵熰熳熯熛熿熞熧熫熼熪熤熭熡熮熴熦熲燄營熺燒燀燙熾燏燠燖燧燊燃燋燎熸燔燉燚燜熷燅熻燍燆燂燘燐燤燗燈燪熶燵燑燝燇燣燛燷燴燭燦燮燥燬燫燯燶燳燱燡燢燲熽燨燰燩燼燿爗燻燹燽燺爀燸爃爄爁爌爊爆爕爍爂爑爉爎爈爅爓爔爐爘爏爒爋爝爚爛爟爖爙爡爞爜爠爣爤爦爥爧爨爩".contains(ch){
+            let start = new_data[0][0];
+            let end = new_data[0][new_data[0].len()-1];
+            let dx = (start[0]-end[0]).abs();
+            let dy = (start[1]-end[1]).abs();
+            if start[0] > end[0] && dx<dy{
+                //middle x
+                let mx = end[0]+(start[0]-end[0])/2;
+                for point in &mut new_data[0]{
+                    let d = point[0]-mx;
+                    point[0] += -d*2;
+                }
+            }
+        }
+
+        map.insert(ch, new_data);
+    }
+    println!("文字数量:{}", map.len());
+    //写入数据
+    let encoded: Vec<u8> = serialize(&map).unwrap();
+    let mut file = File::create("stroke_data").unwrap();
+    file.write_all(&encoded).unwrap();
 
 }
 
@@ -202,3 +260,69 @@ fn get_strokes_from_file(ch:char) -> Vec<Vec<[i32;2]>>{
     let mut decoded:Vec<Vec<[i32;2]>> = deserialize(&contents[..]).unwrap();
     decoded
 }
+
+fn fetch(url:&str) -> String{
+    let mut res = reqwest::get(url).unwrap();
+    println!("fetch {} Status: {}", url, res.status());
+    res.text().unwrap()
+}
+
+//从 http://bishun.shufaji.com 解析一个汉字的笔画
+// fn fetch_original_stroke<'a>(ch: &char)->Option<(String, Vec<Vec<[i32;2]>>)>{
+//     //获取unicode码
+//     let unicode = ch.escape_unicode().to_string().replace("\\", "").replace("u{", "").replace("}", "");
+//     let strock_url = format!("http://bihua.shufami.com/0x{}.html", unicode);
+//     let html = fetch(&strock_url);
+//     /*
+
+// 	hzbh.main('繁', 繁:[17,'0:(162,18) (186,36) (138,96) (96,144) (30,204)#1:(138,96) (420,96) (378,78) (336,96)#2:(144,138) (108,336) (84,354) (108,336) (444,336) (402,324) (366,336)#3:(138,162) (360,162) (390,138) (360,162) (330,360)#4:(192,168) (246,204) (264,228) (270,246)#5:(24,252) (462,252) (420,234) (384,252)#6:(192,252) (246,276) (264,300) (270,324)#7:(528,18) (552,30) (510,96) (474,144) (444,186)#8:(498,114) (726,114) (684,96) (648,114)#9:(654,114) (636,162) (612,216) (582,264) (546,306) (492,354) (438,390)#10:(486,132) (522,210) (552,258) (588,300) (630,336) (660,360) (714,390)#11:(312,360) (348,366) (198,456) (162,468) (198,456) (402,444)#12:(468,384) (498,396) (348,474) (150,564) (114,576) (150,564) (576,540)#13:(480,474) (552,516) (594,552) (618,588)#14:(390,552) (390,708) (378,732) (348,762) (270,702)#15:(234,594) (276,612) (192,672) (120,714) (54,744)#16:(480,606) (540,636) (618,684) (690,738)']});hzbh.flash('繁','fj/fan7');
+//     */
+//    let s = html.split("hzbh.main(");
+//    if let Some(s) = s.skip(1).next(){
+//        let mut s = s.split(");");
+//        if let Some(s) = s.next(){
+//             //println!("{}", s);
+//             let s = s.split("{");
+//             if let Some(s) = s.skip(1).next(){
+//                 //繁:[17, '0:(x,y)..#2:(x,y)..#3..']}
+                
+//                 let mut map = s.split(":[");
+//                 let key = map.next().unwrap();
+//                 let mut value = map.next().unwrap().trim_right_matches("']}").split(",'");
+//                 let count = value.next().unwrap();
+//                 let mut string = String::from(value.next().unwrap());
+//                 println!("汉字={}", key);
+//                 println!("笔画数={}", count);
+//                 let mut result = vec![];
+//                 string.replace_range(0..2, "");
+//                 for i in 1..count.parse().unwrap(){
+//                     string = string.replace(&format!("#{}:", i), "#");
+//                 }
+//                 let arr = string.split("#");
+                
+//                 for b in arr{
+//                     if b.trim().len() == 0{
+//                         continue;
+//                     }
+//                     let mut points:Vec<[i32;2]> = b.split(" ").map(|p|{
+//                         let xy:Vec<&str> = p.trim_right_matches(")")
+//                         .trim_left_matches("(").split(",").collect();
+//                         [xy[0].parse().unwrap(), xy[1].parse().unwrap()]
+//                     }).collect();
+//                     result.push(points);
+//                 }
+
+//                 return Some((key.to_string(), result));
+                
+//             }else{
+//                 println!("没有找到花括号");
+//             }
+//        }else{
+//            println!("没有找到);");
+//        }
+//    }else{
+//        println!("没有找到hzbh.main(");
+//    }
+   
+//    None
+// }
