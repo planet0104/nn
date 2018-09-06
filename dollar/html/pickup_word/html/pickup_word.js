@@ -485,8 +485,8 @@ Module.STDWEB_PRIVATE.acquire_tmp = function( dummy ) {
     return {
         imports: {
             env: {
-                "__extjs_496ebd7b1bc0e6eebd7206e8bee7671ea3b8006f": function($0, $1, $2) {
-                $1 = Module.STDWEB_PRIVATE.to_js($1);$2 = Module.STDWEB_PRIVATE.to_js($2);Module.STDWEB_PRIVATE.from_js($0, (function(){return ($1). querySelector (($2));})());
+                "__extjs_2034053b7b6771271a2dad3e5416b045a74488a1": function($0, $1, $2, $3) {
+                Module.STDWEB_PRIVATE.acquire_js_reference( $0 ).setTimeout( function() {Module.STDWEB_PRIVATE.dyncall( 'vi', $1, [$2] );}, $3 );
             },
             "__extjs_80d6d56760c65e49b7be8b6b01c1ea861b046bf0": function($0) {
                 Module.STDWEB_PRIVATE.decrement_refcount( $0 );
@@ -494,8 +494,20 @@ Module.STDWEB_PRIVATE.acquire_tmp = function( dummy ) {
             "__extjs_5984245de8b6ef88f693ba2383ebf3c2f9718c6c": function($0) {
                 var o = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (o instanceof HTMLCanvasElement) | 0;
             },
+            "__extjs_9f22d4ca7bc938409787341b7db181f8dd41e6df": function($0) {
+                Module.STDWEB_PRIVATE.increment_refcount( $0 );
+            },
+            "__extjs_496ebd7b1bc0e6eebd7206e8bee7671ea3b8006f": function($0, $1, $2) {
+                $1 = Module.STDWEB_PRIVATE.to_js($1);$2 = Module.STDWEB_PRIVATE.to_js($2);Module.STDWEB_PRIVATE.from_js($0, (function(){return ($1). querySelector (($2));})());
+            },
             "__extjs_20ad46df0c338e20bd94061cd656da90c3ba5ba5": function($0, $1) {
                 $1 = Module.STDWEB_PRIVATE.to_js($1);Module.STDWEB_PRIVATE.from_js($0, (function(){return ($1). getContext ("2d");})());
+            },
+            "__extjs_a3b76c5b7916fd257ee3f362dc672b974e56c476": function($0, $1) {
+                $1 = Module.STDWEB_PRIVATE.to_js($1);Module.STDWEB_PRIVATE.from_js($0, (function(){return ($1). success ;})());
+            },
+            "__extjs_5ecfd7ee5cecc8be26c1e6e3c90ce666901b547c": function($0, $1) {
+                $1 = Module.STDWEB_PRIVATE.to_js($1);Module.STDWEB_PRIVATE.from_js($0, (function(){return ($1). error ;})());
             },
             "__extjs_00500cd5803682d52c028207482dae4d987b363b": function($0, $1) {
                 $1 = Module.STDWEB_PRIVATE.to_js($1);Module.STDWEB_PRIVATE.from_js($0, (function(){return ($1). canvas ;})());
@@ -520,6 +532,9 @@ Module.STDWEB_PRIVATE.acquire_tmp = function( dummy ) {
             },
             "__extjs_c316475a01a50f3dfea2c3ec1fbe6277eafe16f2": function($0) {
                 $0 = Module.STDWEB_PRIVATE.to_js($0);($0). beginPath ();
+            },
+            "__extjs_bf0e892d0bc47772f414e3f246754d2d86c9528d": function($0, $1, $2, $3, $4) {
+                $1 = Module.STDWEB_PRIVATE.to_js($1);$2 = Module.STDWEB_PRIVATE.to_js($2);$3 = Module.STDWEB_PRIVATE.to_js($3);$4 = Module.STDWEB_PRIVATE.to_js($4);Module.STDWEB_PRIVATE.from_js($0, (function(){try {($1). drawImage (($2), ($3), ($4)); return {success : true};}catch (error){return {error : error , success : false};}})());
             },
             "__extjs_24e7348ebd4300e26b55234a3fd3454a78955a76": function($0, $1, $2, $3, $4) {
                 $0 = Module.STDWEB_PRIVATE.to_js($0);$1 = Module.STDWEB_PRIVATE.to_js($1);$2 = Module.STDWEB_PRIVATE.to_js($2);$3 = Module.STDWEB_PRIVATE.to_js($3);$4 = Module.STDWEB_PRIVATE.to_js($4);($0). fillRect (($1), ($2), ($3), ($4));
@@ -554,6 +569,21 @@ Module.STDWEB_PRIVATE.acquire_tmp = function( dummy ) {
             "__extjs_774c73f8d5accb8c8e3c08b4ab0d34c70766e846": function($0, $1, $2, $3, $4) {
                 $0 = Module.STDWEB_PRIVATE.to_js($0);$1 = Module.STDWEB_PRIVATE.to_js($1);$2 = Module.STDWEB_PRIVATE.to_js($2);$3 = Module.STDWEB_PRIVATE.to_js($3);$4 = Module.STDWEB_PRIVATE.to_js($4);($0). strokeRect (($1), ($2), ($3), ($4));
             },
+            "__extjs_4995242ea68f8ee70dc2ea0a987f8c3fefcb1273": function($0, $1, $2) {
+                $0 = Module.STDWEB_PRIVATE.to_js($0);$1 = Module.STDWEB_PRIVATE.to_js($1);$2 = Module.STDWEB_PRIVATE.to_js($2);($0). translate (($1), ($2));
+            },
+            "__extjs_ea616dc5ba4767572f03b776a1fb421c8b84a57e": function($0) {
+                var r = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (r instanceof DOMException) && (r.name === "IndexSizeError");
+            },
+            "__extjs_0a02c7764aacc2ed939a149ae98000223d3eebe8": function($0) {
+                var r = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (r instanceof DOMException) && (r.name === "InvalidStateError");
+            },
+            "__extjs_4bb37a461a98d923479c58a87b623248a95b62ca": function($0) {
+                var r = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (r instanceof DOMException) && (r.name === "TypeError");
+            },
+            "__extjs_7acc5a611b1dfdb40f09c005d173515f6f286581": function($0) {
+                var r = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (r instanceof DOMException) && (r.name === "NotSupportedError");
+            },
             "__extjs_89611721005b3de331324f19bedec5df179862e4": function($0) {
                 var o = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (o instanceof CanvasRenderingContext2D) | 0;
             },
@@ -569,14 +599,29 @@ Module.STDWEB_PRIVATE.acquire_tmp = function( dummy ) {
             "__extjs_72fc447820458c720c68d0d8e078ede631edd723": function($0, $1, $2) {
                 console.error( 'Panic location:', Module.STDWEB_PRIVATE.to_js_string( $0, $1 ) + ':' + $2 );
             },
-            "__extjs_1c8769c3b326d77ceb673ada3dc887cf1d509509": function($0) {
-                Module.STDWEB_PRIVATE.from_js($0, (function(){return document ;})());
+            "__extjs_9753633c3f23bcd5d7d2b9f59b2b5eceaa5d21f8": function($0) {
+                Module.STDWEB_PRIVATE.from_js($0, (function(){return new Image ();})());
             },
             "__extjs_a72c1c3711c212b05f52b8743debbfb8f27e1926": function($0, $1) {
                 $1 = Module.STDWEB_PRIVATE.to_js($1);Module.STDWEB_PRIVATE.from_js($0, (function(){return ($1). height ;})());
             },
+            "__extjs_d03bec785cb278586b42d8a10443d970fee278b6": function($0, $1) {
+                $0 = Module.STDWEB_PRIVATE.to_js($0);$1 = Module.STDWEB_PRIVATE.to_js($1);($0). src = ($1);
+            },
+            "__extjs_fa54d8a49420847890278c906f291a2ce1dd03ca": function($0) {
+                var o = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (o instanceof HTMLImageElement) | 0;
+            },
+            "__extjs_1c8769c3b326d77ceb673ada3dc887cf1d509509": function($0) {
+                Module.STDWEB_PRIVATE.from_js($0, (function(){return document ;})());
+            },
+            "__extjs_74d5764ddc102a8d3b6252116087a68f2db0c9d4": function($0) {
+                Module.STDWEB_PRIVATE.from_js($0, (function(){return window ;})());
+            },
             "__extjs_6c47cfe7b20d140c462be80002863de205806d99": function($0, $1) {
                 $1 = Module.STDWEB_PRIVATE.to_js($1);Module.STDWEB_PRIVATE.from_js($0, (function(){return ($1). width ;})());
+            },
+            "__extjs_0aced9e2351ced72f1ff99645a129132b16c0d3c": function($0) {
+                var value = Module.STDWEB_PRIVATE.get_raw_value( $0 );return Module.STDWEB_PRIVATE.register_raw_value( value );
             },
             "__extjs_db0226ae1bbecd407e9880ee28ddc70fc3322d9c": function($0) {
                 $0 = Module.STDWEB_PRIVATE.to_js($0);Module.STDWEB_PRIVATE.unregister_raw_value (($0));

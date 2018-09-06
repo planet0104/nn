@@ -1,7 +1,11 @@
 mod pdollarplus;
+mod stroke;
 const DATA:&[u8] = include_bytes!("../../stroke_data");
 use bincode::deserialize;
 use std::collections::HashMap;
+use self::stroke::Point;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 /*
 
@@ -20,7 +24,7 @@ Window功能
 
  */
 
-pub trait Context2D{
+pub trait Iterface{
     fn set_font(&self, font: &str);
     fn set_fill_style_color(&self, color: &str);
     fn fill_rect(&self, x: f64, y: f64, width: f64, height: f64);
@@ -40,67 +44,110 @@ pub trait Context2D{
     fn save(&self);
     fn restore(&self);
     fn scale(&self, x: f64, y: f64);
+    fn translate(&self, x: f64, y: f64);
+    //控制画刷
+    fn darw_brush(&self, x:f64, y:f64);
+    fn brush_height(&self) -> f64;
+    //fn start_animation(&self, context:Rc<RefCell<Iterface>>, delay: u32);
+    //fn get_controller_mut(&mut self)->&mut Controller;
 }
 
 pub struct Controller{
-    context: Box<Context2D>,
+    interface: Box<Iterface>,
     stroeks_map: HashMap<char, Vec<Vec<[i32;2]>>>,
+    brush_anim: Vec<Point>,
 }
 
 impl Controller{
-    pub fn new(context: Box<Context2D>) ->Controller{
+    pub fn new() ->Controller{
         Controller{
-            context,
-            stroeks_map: deserialize(&DATA[..]).unwrap()
+            stroeks_map: deserialize(&DATA[..]).unwrap(),
+            brush_anim: vec![],
         }
     }
 
-    pub fn init(&mut self){
-        let (width, height) = (self.context.canvas_width(), self.context.canvas_height());
-        let font_size = width as f64 * 0.9;
-        self.context.set_font(&format!("{}px FZKTJW", font_size as i32));
-        //画田字格
-        self.context.set_fill_style_color("#eae4c6");
-        self.context.fill_rect(0.0, 0.0, width as f64, height as f64);
-        self.context.set_stroke_style_color("#c02c38");
-        self.context.set_line_width(4.0);
-        self.context.stroke_rect(0.0, 0.0, width as f64, height as f64);
+    //更新动画
+    pub fn update(&mut self) -> bool{
+        if self.brush_anim.len()>0{
+            let _point = self.brush_anim.pop().unwrap();
+            true   
+        }else{
+            false
+        }
+    }
 
-        self.context.begin_path();
-        self.context.set_line_width(1.5);
-        self.context.set_line_dash(vec![5.0, 5.0]);
-        self.context.move_to(0.0, 0.0);
-        self.context.line_to(width as f64, height as f64);
-        self.context.move_to(width as f64, 0.0);
-        self.context.line_to(0.0, height as f64);
-        self.context.move_to(width as f64/2.0, 0.0);
-        self.context.line_to(width as f64/2.0, height as f64);
-        self.context.move_to(0.0, height as f64/2.0);
-        self.context.line_to(width as f64, height as f64/2.0);
-        self.context.stroke();
+    //绘制
+    pub fn render(&mut self){
+        let interface = self.interface;
+        let (width, height) = (interface.canvas_width(), interface.canvas_height());
+        let font_size = width as f64 * 0.9;
+        interface.set_font(&format!("{}px FZKTJW", font_size as i32));
+        //画田字格
+        interface.set_fill_style_color("#eae4c6");
+        interface.fill_rect(0.0, 0.0, width as f64, height as f64);
+        interface.set_stroke_style_color("#c02c38");
+        interface.set_line_width(4.0);
+        interface.stroke_rect(0.0, 0.0, width as f64, height as f64);
+
+        interface.begin_path();
+        interface.set_line_width(1.5);
+        interface.set_line_dash(vec![5.0, 5.0]);
+        interface.move_to(0.0, 0.0);
+        interface.line_to(width as f64, height as f64);
+        interface.move_to(width as f64, 0.0);
+        interface.line_to(0.0, height as f64);
+        interface.move_to(width as f64/2.0, 0.0);
+        interface.line_to(width as f64/2.0, height as f64);
+        interface.move_to(0.0, height as f64/2.0);
+        interface.line_to(width as f64, height as f64/2.0);
+        interface.stroke();
+        let ch = '中';
 
         //画字
-        self.context.set_fill_style_color("#6674787a");
-        self.context.set_text_align("center");
-        self.context.set_text_baseline("middle");
-        self.context.fill_text("灯", width as f64/2.0, height as f64/2.0+font_size*0.045, None);
+        interface.set_fill_style_color("#6674787a");
+        interface.set_text_align("center");
+        interface.set_text_baseline("middle");
+        interface.fill_text(&ch.to_string(), width as f64/2.0, height as f64/2.0+font_size*0.045, None);
 
         //笔画路径
-        //原始笔画50x70 倍数20倍即 ????
-        //宽度width
-        let strokes:&Vec<Vec<[i32;2]>> = self.stroeks_map.get(&'灯').unwrap();
-        self.context.save();
-        self.context.begin_path();
-        self.context.scale(0.4, 0.4);
-        self.context.set_line_dash(vec![]);
+        //原始宽高 900x900, dx=180,dy=85
+        //计算比例
+        let scale = width as f64/900.0;
+
+        //测试笔画
+        let strokes:&Vec<Vec<[i32;2]>> = self.stroeks_map.get(&ch).unwrap();
+
+        interface.save();
+        interface.set_stroke_style_color("#000088");
+        interface.begin_path();
+        interface.translate(scale*88.0, scale*48.0);
+        interface.scale(scale, scale);
+        interface.set_line_dash(vec![]);
+
+        //绘制画笔
+        if self.brush_anim.len()>0{
+            interface.darw_brush(self.brush_anim[0].x, self.brush_anim[0].y - interface.brush_height());   
+        }
+
         for points in strokes{
-            self.context.move_to(points[0][0] as f64, points[0][1] as f64);
+            interface.move_to(points[0][0] as f64, points[0][1] as f64);
             for i in 1..points.len(){
-                self.context.line_to(points[i][0] as f64, points[i][1] as f64);
+                interface.line_to(points[i][0] as f64, points[i][1] as f64);
             }
         }
-        self.context.stroke();
-        self.context.restore();
+        interface.stroke();
+        interface.restore();
+    }
+
+    pub fn init(&mut self){
+        self.create_anim_path();
+        //self.interface.start_animation(1000);
+    }
+
+    pub fn create_anim_path(&mut self){
+        let strokes:&Vec<Vec<[i32;2]>> = self.stroeks_map.get(&'中').unwrap();
+        //第一笔
+        self.brush_anim = stroke::resample(stroke::parse(&strokes[0]), 64);
     }
 }
 
