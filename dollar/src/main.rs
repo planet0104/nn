@@ -1,11 +1,13 @@
 extern crate reqwest;
 extern crate bincode;
+extern crate piston_window;
 
 mod dollar;
 mod ndollar;
 mod pdollar;
 mod pdollarplus;
 
+use piston_window::*;
 use std::fs::File;
 use std::io::prelude::*;
 use bincode::{serialize, deserialize};
@@ -105,7 +107,15 @@ fn main() {
     // file.write_all(&encoded).unwrap();
 
     //根据原始笔画文件，创建新的笔画数据
+
+    
     let original_map:HashMap<char, Vec<Vec<[i32;2]>>> = deserialize(&ORIGINAL_STROKE_DATA[..]).unwrap();
+    /*let mut strokes = original_map.get(&'了').unwrap().clone();
+    strokes.remove(1);
+    draw_stroke(&strokes);
+    */
+
+
     let stroke_orders_map:HashMap<char, Vec<usize>> = deserialize(&STROKE_ORDER_DATA[..]).unwrap();
     let mut map:HashMap<char, Vec<Vec<[i32;2]>>> = HashMap::new();
     for entry in fs::read_dir("strokes").unwrap() {
@@ -188,52 +198,79 @@ fn main() {
                 }
             }
         }
+        use pdollarplus::{PDollarPlusRecognizer, Point};
+        let mut pdpr = PDollarPlusRecognizer::new();
+        //添加了第一画的模板
+        let le_strokes = original_map.get(&'了').unwrap();
+        let le_one = le_strokes[0].iter().map(|p|{ Point::new(p[0], p[1], 1) }).collect();
+        pdpr.add_gesture("leone", le_one);
+        //'了'的第一画是反的，循环所有笔画，如果匹配了的第一画，如果起点x大于终点x，要反过来
+        let new_data = new_data.iter().map(|ps|{
+            let points = ps.iter().map(|psraw|{
+                Point::new(psraw[0], psraw[1], 1)
+            }).collect();
+        }).collect();
+
 
         map.insert(ch, new_data);
     }
-    println!("文字数量:{}", map.len());
-    //写入数据
-    let encoded: Vec<u8> = serialize(&map).unwrap();
-    let mut file = File::create("stroke_data").unwrap();
-    file.write_all(&encoded).unwrap();
+    // println!("文字数量:{}", map.len());
+    // //写入数据
+    // let encoded: Vec<u8> = serialize(&map).unwrap();
+    // let mut file = File::create("stroke_data").unwrap();
+    // file.write_all(&encoded).unwrap();
+
+
+    // let strokes_data = "144,128-144,128-161,127-164,148-182,160-178,126-194,125-198,157-215,154-211,124-227,122-231,151-247,148-244,121-260,120-264,145-280,142-277,119-293,117-296,140-313,137-310,116-327,115-329,134-345,131-343,114-360,113-362,128-378,126-376,110-392,108-394,124-411,121-409,106-425,103-427,119-444,117-442,101-458,99-460,114-477,112-474,96-491,94-493,110-509,107-507,92-524,89-526,105-542,103-539,75-553,57-559,100-575,98-572,76-591,95-591,95#588,92-592,96-578,106-567,95-545,98-565,116-553,128-528,105-519,119-542,140-530,152-509,133-500,147-519,164-507,176-491,161-481,175-496,188-484,200-472,189-462,203-473,212-461,224-451,214-439,226-450,236-438,248-427,238-415,250-427,260-415,272-403,261-392,273-404,284-392,296-384,280#336,224-336,224-349,240-342,240-348,256-361,255-371,271-353,272-359,288-377,287-383,302-365,303-370,319-389,318-393,334-376,335-378,351-397,350-400,366-380,367-383,383-403,382-406,397-385,399-387,414-409,413-411,429-389,430-391,446-412,445-414,461-392,462-392,478-416,477-416,493-392,494-392,510-416,509-416,525-392,526-392,543-416,541-416,557-390,559-388,575-416,573-414,590-386,591-385,607-411,606-407,622-379,623-374,640-404,638-401,654-369,656-363,672-393,671-385,687-357,689-350,705-377,704-369,720-349,721-360,736-360,736#364,681-347,718-337,704-361,681-344,674-327,690-317,677-331,663-318,652-305,665-293,653-305,641-291,630-281,641-269,628-278,619-265,608-259,614-248,600-256,600".trim();
+    // let mut strokes:Vec<Vec<[i32; 2]>> = vec![];
+    // for stroke in strokes_data.split("#"){
+    //     let mut points = vec![];
+    //     for point in stroke.split("-"){
+    //         let mut iter = point.split(",");
+    //         let val1 = iter.next().unwrap();
+    //         let val2 = iter.next().unwrap();
+    //         points.push([val1.parse::<i32>().unwrap(), val2.parse::<i32>().unwrap()]);
+    //     }
+    //     strokes.push(points);
+    // }
+    // draw_stroke(&strokes);
 
 }
 
-// fn test_aaa(){
-//     let strokes = get_strokes_from_file('七');
-//     let mut window: PistonWindow = WindowSettings::new("dollar", [900, 900])
-//         .exit_on_esc(true)
-//         .build()
-//         .unwrap();
-//     while let Some(event) = window.next() {
-//         window.draw_2d(&event, |context, graphics| {
-//             clear([1.0; 4], graphics);
-//             for points in &strokes{
-//                 for i in 1..points.len(){
-//                     // line(
-//                     //     [0.0, 0.0, 0.0, 255.0],
-//                     //     1.0,
-//                     //     [points[i - 1][0].into(), points[i - 1][1].into(), points[i][0].into(), points[i][1].into()],
-//                     //     context.transform,
-//                     //     graphics,
-//                     // );
-//                     ellipse(
-//                         [0.0, 255.0, 0.0, 255.0],
-//                         [points[i][0].into(), points[i][1].into(), 5.0, 5.0],
-//                         context.transform,
-//                         graphics,
-//                     );
-//                 }
-//                 ellipse(
-//                     [0.0, 0.0, 255.0, 255.0],
-//                     [points[0][0].into(), points[0][1].into(), 5.0, 5.0],
-//                     context.transform,
-//                     graphics,
-//                 );
-//             }
-//         });
-//     }
-// }
+fn draw_stroke(strokes:&Vec<Vec<[i32;2]>>){
+    let mut window: PistonWindow = WindowSettings::new("dollar", [900, 900])
+        .exit_on_esc(true)
+        .build()
+        .unwrap();
+    while let Some(event) = window.next() {
+        window.draw_2d(&event, |context, graphics| {
+            clear([1.0; 4], graphics);
+            for points in strokes{
+                for i in 1..points.len(){
+                    line(
+                        [0.0, 0.0, 0.0, 255.0],
+                        1.0,
+                        [points[i - 1][0].into(), points[i - 1][1].into(), points[i][0].into(), points[i][1].into()],
+                        context.transform,
+                        graphics,
+                    );
+                    ellipse(
+                        [0.0, 255.0, 0.0, 255.0],
+                        [points[i][0].into(), points[i][1].into(), 5.0, 5.0],
+                        context.transform,
+                        graphics,
+                    );
+                }
+                ellipse(
+                    [0.0, 0.0, 255.0, 255.0],
+                    [points[0][0].into(), points[0][1].into(), 25.0, 25.0],
+                    context.transform,
+                    graphics,
+                );
+            }
+        });
+    }
+}
 
 //笔画点数少于60，要在两点之间插入新的点
 // fn resample(strokes: Vec<Vec<[i32;2]>>) ->Vec<Vec<[i32;2]>>{

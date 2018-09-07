@@ -7,7 +7,7 @@ extern crate lazy_static;
 mod controller;
 
 use std::rc::Rc;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use stdweb::traits::*;
 use stdweb::unstable::TryInto;
 use stdweb::web::event::{ClickEvent, IEvent};
@@ -21,23 +21,22 @@ use stdweb::web::TextBaseline;
 use stdweb::web::set_timeout;
 use stdweb::web::window;
 
-use controller::{Controller, Context2D};
+use controller::Controller;
+use controller::Interface;
 
-struct CtrlContext2d{
-    controller: Controller,
+thread_local!{
+    static CONTROLLER: RefCell<Option<Controller>> = RefCell::new(None);
+}
+// lazy_static! {
+//     static ref CONTROLLER: Option<Controller> = None;
+// }
+
+struct CtrlInterface{
     context: CanvasRenderingContext2d,
     brush: ImageElement,
 }
 
-impl CtrlContext2d {
-    // fn animate(&mut self, time: f64, rc: Rc<RefCell<Self>>) {
-    //     window().request_animation_frame(move |time| {
-    //         rc.borrow_mut().animate(time, rc.clone());
-    //     });
-    // }
-}
-
-impl Context2D for CtrlContext2d{
+impl Interface for CtrlInterface{
     fn set_font(&self, font: &str){
         self.context.set_font(font);
     }
@@ -120,39 +119,17 @@ impl Context2D for CtrlContext2d{
         self.brush.height() as f64
     }
 
-    fn start_animation(&self, ctx: Rc<RefCell<Context2D>>, delay:u32){
-        self.controller.render(self);
-        if self.controller.update(){
-            
-        }
-        
+    fn next_frame(&self, delay:u32){
+        set_timeout(move ||{
+            CONTROLLER.with(|c| {
+                c.borrow_mut().as_mut().unwrap().animate(delay);
+            });
+        }, delay);
     }
 
-    fn get_controller_mut(&mut self) -> &mut Controller{
-        &mut self.controller
+    fn log(&self, s:&str){
+        js!(console.log(@{s}));
     }
-
-    // fn start_animation(&self, cb: fn(), delay:u32){
-    //     let u = {let mut ctrl = controller.borrow_mut();
-    //         let u = ctrl.update();
-    //         ctrl.render();
-    //         u
-    //     };
-    //     if u{
-    //         set_timeout(move ||{
-    //             controller.borrow_mut().animate();
-    //         }, delay);
-    //     }
-        
-    //     // let step = ||{
-    //     //     let u = CONTROLLER.update();
-    //     //     CONTROLLER.render();
-    //     //     if u{
-    //     //         set_timeout(step, delay);        
-    //     //     }
-    //     // };
-    //     // set_timeout(step, delay);
-    // }
 }
 
 fn main() {
@@ -166,20 +143,15 @@ fn main() {
     let bursh = ImageElement::new();
     bursh.set_src("brush.png");
 
-    let context2d = Rc::new(RefCell::new(CtrlContext2d{
+    let controller = Controller::new(Box::new(CtrlInterface{
         context: canvas.get_context().unwrap(),
-        brush: bursh,
-        controller: Controller::new()
+        brush: bursh,        
     }));
-    context2d.borrow_mut().controller.init(context2d.clone());
 
-    // let state = Rc::new(RefCell::new(State{
-    //     controller:Controller::new(}));
-    
-    //state.borrow_mut().controller;
-
-    //let controller = 
-    //controller.borrow_mut().init(controller.clone());
+    CONTROLLER.with(|c| {
+        *c.borrow_mut() = Some(controller);
+        c.borrow_mut().as_mut().unwrap().init();
+    });
     
     stdweb::event_loop();
 }

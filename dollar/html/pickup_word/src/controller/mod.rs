@@ -1,11 +1,8 @@
 mod pdollarplus;
-mod stroke;
 const DATA:&[u8] = include_bytes!("../../stroke_data");
 use bincode::deserialize;
 use std::collections::HashMap;
-use self::stroke::Point;
-use std::rc::Rc;
-use std::cell::RefCell;
+use self::pdollarplus::{Point, resample};
 
 /*
 
@@ -24,7 +21,7 @@ Window功能
 
  */
 
-pub trait Iterface{
+pub trait Interface{
     fn set_font(&self, font: &str);
     fn set_fill_style_color(&self, color: &str);
     fn fill_rect(&self, x: f64, y: f64, width: f64, height: f64);
@@ -48,37 +45,49 @@ pub trait Iterface{
     //控制画刷
     fn darw_brush(&self, x:f64, y:f64);
     fn brush_height(&self) -> f64;
-    //fn start_animation(&self, context:Rc<RefCell<Iterface>>, delay: u32);
-    //fn get_controller_mut(&mut self)->&mut Controller;
+    fn next_frame(&self, delay: u32);
+    fn log(&self, str:&str);
 }
 
 pub struct Controller{
-    interface: Box<Iterface>,
+    interface: Box<Interface>,
     stroeks_map: HashMap<char, Vec<Vec<[i32;2]>>>,
     brush_anim: Vec<Point>,
+    character: Option<char>,
+    strokes: Vec<Vec<Point>>,
+    stroke_index: usize,
 }
 
 impl Controller{
-    pub fn new() ->Controller{
+    pub fn new(interface: Box<Interface>) ->Controller{
         Controller{
             stroeks_map: deserialize(&DATA[..]).unwrap(),
             brush_anim: vec![],
+            interface: interface,
+            character: None,
+            stroke_index: 0,
+            strokes: vec![]
         }
     }
 
     //更新动画
     pub fn update(&mut self) -> bool{
+        //let log = format!("controller::update 长度:{} {:?}", self.brush_anim.len(), self.brush_anim.get(0));
+        //self.interface.log(&log);
         if self.brush_anim.len()>0{
-            let _point = self.brush_anim.pop().unwrap();
-            true   
+            let _point = self.brush_anim.remove(0);
+            true
         }else{
+            self.on_animation_end();
             false
         }
     }
 
     //绘制
     pub fn render(&mut self){
-        let interface = self.interface;
+        //self.interface.log("controller::render");
+        let interface = &self.interface;
+        interface.save();
         let (width, height) = (interface.canvas_width(), interface.canvas_height());
         let font_size = width as f64 * 0.9;
         interface.set_font(&format!("{}px FZKTJW", font_size as i32));
@@ -101,13 +110,12 @@ impl Controller{
         interface.move_to(0.0, height as f64/2.0);
         interface.line_to(width as f64, height as f64/2.0);
         interface.stroke();
-        let ch = '中';
 
         //画字
         interface.set_fill_style_color("#6674787a");
         interface.set_text_align("center");
         interface.set_text_baseline("middle");
-        interface.fill_text(&ch.to_string(), width as f64/2.0, height as f64/2.0+font_size*0.045, None);
+        interface.fill_text(&self.character.unwrap().to_string(), width as f64/2.0, height as f64/2.0+font_size*0.045, None);
 
         //笔画路径
         //原始宽高 900x900, dx=180,dy=85
@@ -115,39 +123,62 @@ impl Controller{
         let scale = width as f64/900.0;
 
         //测试笔画
-        let strokes:&Vec<Vec<[i32;2]>> = self.stroeks_map.get(&ch).unwrap();
-
         interface.save();
         interface.set_stroke_style_color("#000088");
         interface.begin_path();
         interface.translate(scale*88.0, scale*48.0);
         interface.scale(scale, scale);
-        interface.set_line_dash(vec![]);
-
+        // interface.set_line_dash(vec![]);
+        // for points in &self.strokes{
+        //     interface.move_to(points[0].x, points[0].y);
+        //     for i in 1..points.len(){
+        //         interface.line_to(points[i].x, points[i].y);
+        //     }
+        // }
+        //interface.stroke();
+        
         //绘制画笔
         if self.brush_anim.len()>0{
             interface.darw_brush(self.brush_anim[0].x, self.brush_anim[0].y - interface.brush_height());   
         }
-
-        for points in strokes{
-            interface.move_to(points[0][0] as f64, points[0][1] as f64);
-            for i in 1..points.len(){
-                interface.line_to(points[i][0] as f64, points[i][1] as f64);
-            }
-        }
-        interface.stroke();
+        interface.restore();
         interface.restore();
     }
 
     pub fn init(&mut self){
-        self.create_anim_path();
-        //self.interface.start_animation(1000);
+        self.character = Some('了');
+        self.create_strokes();
+        self.brush_anim = self.strokes[0].clone();
+        self.animate(30);
     }
 
-    pub fn create_anim_path(&mut self){
-        let strokes:&Vec<Vec<[i32;2]>> = self.stroeks_map.get(&'中').unwrap();
-        //第一笔
-        self.brush_anim = stroke::resample(stroke::parse(&strokes[0]), 64);
+    pub fn on_animation_end(&mut self){
+        if self.stroke_index<self.strokes.len()-1{
+            self.stroke_index += 1;
+            self.brush_anim = self.strokes[self.stroke_index].clone();
+            self.animate(30);
+        }
+    }
+
+    pub fn animate(&mut self, delay: u32){
+        self.render();
+        let update = self.update();
+        if update{
+            self.interface.next_frame(delay);
+        }
+    }
+
+    //创建笔画数组
+    pub fn create_strokes(&mut self){
+        let strokes:&Vec<Vec<[i32;2]>> = self.stroeks_map.get(&self.character.unwrap()).unwrap();
+        self.strokes.clear();
+        for i in 0..strokes.len(){
+            self.strokes.push(
+                resample(strokes[i].iter().map(|p|{
+                    Point::new(p[0], p[1], i+1)
+                }).collect(), 30)
+            );
+        }
     }
 }
 

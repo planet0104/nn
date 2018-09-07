@@ -542,7 +542,7 @@ fn scale(points: &Vec<Point>) -> Vec<Point> {
     new_points
 }
 
-fn resample(mut points: Vec<Point>, n: usize) -> Vec<Point> {
+pub fn resample(mut points: Vec<Point>, n: usize) -> Vec<Point> {
     let len = path_length(&points) / (n as f64 - 1.0); // interval length
     let mut dist = 0.0;
     let mut new_points = vec![points[0].clone()];
