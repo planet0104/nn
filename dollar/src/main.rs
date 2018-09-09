@@ -193,6 +193,13 @@ fn main() {
             clone_strokes[2] = last;
         }
 
+        //餐的第14笔最后两个点去掉
+        if ch == '餐'{
+            clone_strokes[13].pop();
+            clone_strokes[13].pop();
+        }
+
+
         let strokes = &clone_strokes;
 
         // if ch == '霸'{
@@ -203,15 +210,12 @@ fn main() {
 
         let mut si = 0;
         for points in strokes{
-            // if ch == '霸'{
+            // if ch == '餐'{
             //     println!("第{}笔 {:?} 长度{}", si, points, points.len());
             // }
             //如果是横(提)，只要起点和终点
             let points = 
             if stroke_orders.len()>si && stroke_orders[si] == 1{
-                // if ch == '霸'{
-                //     println!("横线1:{:?}", points);
-                // }
                 //有些竖笔画写成了横，导致只有两个点，这样取就错了，大于2个点的才需要减少点
                 //y最大的点为起点
                 let mut lowest = 0;
@@ -258,16 +262,19 @@ fn main() {
                 points.clone()
             };
             
-            //折末尾的勾去掉(如：每)
+            //折末尾的勾去掉(如：每) -- 折的点数大于4
             if stroke_orders.len()>si &&  stroke_orders[si] == 5{
+                //if ch == '餐'{ println!("折末尾的勾去掉--before{:?}", new_points); }
                 let len = new_points.len();
                 if len>=5{
-                    //最后一个点的y和倒数第3个点的y相等
-                    if new_points[len-1][1] == new_points[len-3][1]{
+                    //最后一个点的y和倒数第3个点的y相等 且 和倒数第4个点的y相等
+                    if new_points[len-1][1] == new_points[len-3][1] 
+                    && new_points[len-1][1] == new_points[len-4][1]{
                         new_points.pop();
                         new_points.pop();
                     }
                 }
+               //if ch == '餐'{  println!("折末尾的勾去掉--after{:?}", new_points); }
             }
             //如果当前笔画是撇，【撇开头的勾去掉】
             if stroke_orders.len()>si &&  stroke_orders[si] == 3{
@@ -277,23 +284,25 @@ fn main() {
                     new_points.remove(0);
                 }
             }
-            // if ch == '霸'{
+            // if ch == '餐'{
             //     println!("第{}笔 新{:?} 笔画:{} 长度{}", si, new_points, stroke_orders[si], new_points.len());
             // }
             
-            //如果是竖，并且起点y大于终点y，需要反向
-            if stroke_orders[si] == 2{
+            //如果是竖、捺，并且起点y大于终点y，需要反向
+            if stroke_orders[si] == 2 || stroke_orders[si] == 4{
                 if new_points[0][1]>new_points[new_points.len()-1][1]{
                     new_points = new_points.iter().rev().map(|p|{
                         [p[0], p[1]]
                     }).collect();
                 }
 
-                //如果竖>=3个点，并且第1个点的x<第2个点的x，删除第一个点
-                //如果竖>=3个点，并且第1个点的x>第2个点的x，删除第一个点
-                if new_points.len()>2{
-                    if new_points[0][0]!=new_points[1][0]{
-                        new_points.remove(0);
+                if stroke_orders[si] == 2{
+                    //如果竖>=3个点，并且第1个点的x<第2个点的x，删除第一个点
+                    //如果竖>=3个点，并且第1个点的x>第2个点的x，删除第一个点
+                    if new_points.len()>2{
+                        if new_points[0][0]!=new_points[1][0]{
+                            new_points.remove(0);
+                        }
                     }
                 }
             }
@@ -307,32 +316,19 @@ fn main() {
                 }
             }
 
-
-            //心 虽然是捺，但是方向是对的
-            //火 虽然是捺，但是方向是错的
-            //怵 虽然是捺，但是方向是对的
-            //
-
-            //结论 只有 火 是错的！
-            //如果是捺，并且起点x小于终点x，需要反转（如 '火'第1笔，'灭'第2笔）
-            // if stroke_orders[si] == 4{
-            //     let start = new_points[0];
-            //     let end = new_points[new_points.len()-1];
-            //     // let dx = (start[0]-end[0]).abs();
-            //     // let dy = (start[1]-end[1]).abs();
-            //     if start[0] > end[0]{
-            //         //middle x
-            //         let mx = end[0]+(start[0]-end[0])/2;
-            //         for point in &mut new_points{
-            //             let d = point[0]-mx;
-            //             point[0] += -d*2;
-            //         }
-            //     }
-            // }
-
             //如果是折，并且起点y大于终点y，需要反向
             if stroke_orders[si] == 5{
                 if new_points[0][1]>new_points[new_points.len()-1][1]{
+                    new_points = new_points.iter().rev().map(|p|{
+                        [p[0], p[1]]
+                    }).collect();
+                }
+            }
+
+            //！！！！如果是捺，并且起点x大于终点x，需要反向（雨字头、宝盖头、萤 的字除外）
+            //如果是捺，并且起点x大于终点x，并且只有两个点的
+            if stroke_orders[si] == 4 && new_points.len()==2{
+                if new_points[0][0]>new_points[new_points.len()-1][0]{
                     new_points = new_points.iter().rev().map(|p|{
                         [p[0], p[1]]
                     }).collect();
@@ -344,7 +340,7 @@ fn main() {
         }
 
         //火字旁第一笔需要反转（有问题！！！！！！！！！！！！！！！！！！！！！ 有些字火字旁不是第一个！！）
-        if "火灭灯灰灮灳灱灲灿灸灵灺炀灾灶灼災灻灴灹灷炉炝炆炘炎炙炬炜炕炔炅炖炊炒炞炐炂烎炈炇炋炍炄炑炗炚炛炌炏炓烁炱炭烃炫炸炻炼烂炯烀炟炽炳炮炷炧炤炢炿炡炴炨炠炵炲炶炦炪炥炾炣炩烨烛烉烖烔烠烢烥烊烟烜烦烘烩烬烤烙烧烫烡烆烚烍烌烅烕烑烐烵烓烶烒烣烄烗烮焒烞烇烻焐烯烴烱焅烲烷焖烺焌焗焕焊焓烽烾焍焋焔烼焇焈焁焂焫烿烰烸焃焀焆烳焻焧焨焤焵焿焸煱焥煑焙焯焠煚焜焮焰焱焢焝焳焽焹煀焟焬焲煐焴焺焼煡焞焛焾焷焩焪焭煜煴煒煉煙煠煩煗煬煊煖煨煲煏煸煅煳煌煤煣煺煢煇煄熍煪煰煶煫煓煟煆煋煔煵煘煁煈煂煥煍煯煃煷煝熢熚煿煼煾熕熒熗燁熄熥煽熔熘熇煹熆熉熅熎熖熁熂熓熃煻熀煛熑熐熋熌熩熣熜熝熨熠熵熰熳熯熛熿熞熧熫熼熪熤熭熡熮熴熦熲燄營熺燒燀燙熾燏燠燖燧燊燃燋燎熸燔燉燚燜熷燅熻燍燆燂燘燐燤燗燈燪熶燵燑燝燇燣燛燷燴燭燦燮燥燬燫燯燶燳燱燡燢燲熽燨燰燩燼燿爗燻燹燽燺爀燸爃爄爁爌爊爆爕爍爂爑爉爎爈爅爓爔爐爘爏爒爋爝爚爛爟爖爙爡爞爜爠爣爤爦爥爧爨爩".contains(ch){
+        if "火灭灯灰灮灳灱灲灿灸灵灺炀灾灶灼災灻灴灹灷炉炝炆炘炎炙炬炜炕炔炅炖炊炒炞炐炂烎炈炇炋炍炄炑炗炚炛炌炏炓烁炱炭烃炫炸炻炼烂炯烀炟炽炳炮炷炧炤炢炿炡炴炨炠炵炲炶炦炪炥炾炣炩烨烛烉烖烔烠烢烥烊烟烜烦烘烩烬烤烙烧烫烡烆烚烍烌烅烕烑烐烵烓烶烒烣烄烗烮焒烞烇烻焐烯烴烱焅烲烷焖烺焌焗焕焊焓烽烾焍焋焔烼焇焈焁焂焫烿烰烸焃焀焆烳焻焧焨焤焵焿焸煱焥煑焙焯焠煚焜焮焰焱焢焝焳焽焹煀焟焬焲煐焴焺焼煡焞焛焾焷焩焪焭煜煴煒煉煙煠煩煗煬煊煖煨煲煏煸煅煳煌煤煣煺煢煇煄熍煪煰煶煫煓煟煆煋煔煵煘煁煈煂煥煍煯煃煷煝熢熚煿煼煾熕熒熗燁熄熥煽熔熘熇煹熆熉熅熎熖熁熂熓熃煻熀煛熑熐熋熌熩熣熜熝熨熠熵熰熳熯熛熿熞熧熫熼熪熤熭熡熮熴熦熲燄營熺燒燀燙熾燏燠燖燧燊燃燋燎熸燔燉燚燜熷燅熻燍燆燂燘燐燤燗燈燪熶燵燑燝燇燣燛燷燴燭燦燮燥燬燫燯燶燳燱燡燢燲熽燨燰燩燼燿爗燻燹燽燺爀燸爃爄爁爌爊爆爕爍爂爑爉爎爈爅爓爔爐爘爏爒爋爝爚爛爟爖爙爡爞爜爠爣爤爦爥爧爨爩躞".contains(ch){
             
             //如果当前比是捺，并且当前开始是4334，说明是火
             for pi in 0..new_data.len(){

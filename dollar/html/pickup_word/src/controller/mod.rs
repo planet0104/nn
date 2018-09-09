@@ -129,10 +129,15 @@ impl Controller{
         interface.translate(scale*88.0, scale*48.0);
         interface.scale(scale, scale);
         interface.set_line_dash(vec![]);
-        for points in &self.strokes{
-            interface.move_to(points[0].x, points[0].y);
+        
+        let strokes:&Vec<Vec<[i32;2]>> = self.stroeks_map.get(&self.character.unwrap()).unwrap();
+        for points in strokes{
+            // if points.len()>6{
+            //     interface.stroke_rect(points[6][0] as f64, points[6][1] as f64, (10) as f64, (10)as f64);
+            // }
+            interface.move_to(points[0][0] as f64, points[0][1] as f64);
             for i in 1..points.len(){
-                interface.line_to(points[i].x, points[i].y);
+                interface.line_to(points[i][0] as f64, points[i][1] as f64);
             }
         }
         interface.stroke();
@@ -146,10 +151,13 @@ impl Controller{
     }
 
     pub fn init(&mut self){
-        self.character = Some('心');
+        self.character = Some('饣');
+        //爨、躞 的笔画是错的
+        //辨的中间一笔画有问题
+        //
         self.create_strokes();
         self.brush_anim = self.strokes[0].clone();
-        self.animate(30);
+        self.animate(10);
     }
 
     pub fn on_animation_end(&mut self){
@@ -157,7 +165,7 @@ impl Controller{
         if self.stroke_index<self.strokes.len()-1{
             self.stroke_index += 1;
             self.brush_anim = self.strokes[self.stroke_index].clone();
-            self.animate(30);
+            self.animate(10);
         }
     }
 
