@@ -128,14 +128,14 @@ impl Controller{
         interface.begin_path();
         interface.translate(scale*88.0, scale*48.0);
         interface.scale(scale, scale);
-        // interface.set_line_dash(vec![]);
-        // for points in &self.strokes{
-        //     interface.move_to(points[0].x, points[0].y);
-        //     for i in 1..points.len(){
-        //         interface.line_to(points[i].x, points[i].y);
-        //     }
-        // }
-        //interface.stroke();
+        interface.set_line_dash(vec![]);
+        for points in &self.strokes{
+            interface.move_to(points[0].x, points[0].y);
+            for i in 1..points.len(){
+                interface.line_to(points[i].x, points[i].y);
+            }
+        }
+        interface.stroke();
         
         //绘制画笔
         if self.brush_anim.len()>0{
@@ -146,13 +146,14 @@ impl Controller{
     }
 
     pub fn init(&mut self){
-        self.character = Some('了');
+        self.character = Some('心');
         self.create_strokes();
         self.brush_anim = self.strokes[0].clone();
         self.animate(30);
     }
 
     pub fn on_animation_end(&mut self){
+        self.interface.log(&format!("第{}笔结束", self.stroke_index));
         if self.stroke_index<self.strokes.len()-1{
             self.stroke_index += 1;
             self.brush_anim = self.strokes[self.stroke_index].clone();
@@ -171,8 +172,10 @@ impl Controller{
     //创建笔画数组
     pub fn create_strokes(&mut self){
         let strokes:&Vec<Vec<[i32;2]>> = self.stroeks_map.get(&self.character.unwrap()).unwrap();
+        self.interface.log(&format!("一共{}笔", strokes.len()));
         self.strokes.clear();
         for i in 0..strokes.len(){
+            self.interface.log(&format!("第{}笔 {:?}", i, strokes[i]));
             self.strokes.push(
                 resample(strokes[i].iter().map(|p|{
                     Point::new(p[0], p[1], i+1)

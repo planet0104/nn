@@ -131,7 +131,7 @@ impl PDollarPlusRecognizer {
     }
 
     pub fn add_gesture(&mut self, name: &str, points: Vec<Point>) -> usize {
-        println!("add_gesture name={}", name);
+        //println!("add_gesture name={}", name);
         self.point_clouds.push(PointCloud::new(name, points));
         let mut num = 0;
         for i in 0..self.point_clouds.len() {
@@ -543,9 +543,16 @@ fn scale(points: &Vec<Point>) -> Vec<Point> {
 }
 
 fn resample(mut points: Vec<Point>, n: usize) -> Vec<Point> {
+    //println!("resample之前:{:?}", points);
     let len = path_length(&points) / (n as f64 - 1.0); // interval length
     let mut dist = 0.0;
     let mut new_points = vec![points[0].clone()];
+
+    //println!("len={:?}", len);
+
+    // if len == 0.0{
+    //     println!("points={:?}", points);
+    // }
 
     let mut i = 1;
     while i < points.len() {
@@ -572,6 +579,8 @@ fn resample(mut points: Vec<Point>, n: usize) -> Vec<Point> {
             points[points.len() - 1].id,
         ));
     }
+
+    //println!("resample之后:{:?}", new_points);
 
     new_points
 }

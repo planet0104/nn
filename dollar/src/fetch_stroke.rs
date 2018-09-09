@@ -1,30 +1,37 @@
 use bincode::{serialize, deserialize};
 use std::fs::File;
 use std::io::prelude::*;
+use reqwest;
 
 pub fn run(){
-    // let mut file = File::open("yq.txt").unwrap();
-    // let mut contents = String::new();
-    // file.read_to_string(&mut contents).unwrap();
+    let contents = {
+        let mut contents = String::new();
+        let mut file = File::open("yq.txt").unwrap();
+        file.read_to_string(&mut contents).unwrap();
+        contents
+    };
 
-    // for line in contents.lines(){
-    //     for ch in line.chars(){
-    //         let file = File::open(format!("{}.stroke", ch));
-    //         if file.is_err(){
-    //             println!("没有{}的笔画", ch);
-    //             let result = get_strokes(ch);
-    //             if let Some(strokes) = result{
-    //                 //println!("{:?}", strokes);
-    //                 let strokes = strokes.1;
-    //                 let encoded: Vec<u8> = serialize(&strokes).unwrap();
-    //                 let mut file = File::create(format!("{}.stroke", ch)).unwrap();
-    //                 file.write_all(&encoded).unwrap();
-    //             }else{
-    //                 println!("没有{}的笔画", ch);
-    //             }
-    //         }
-    //     }    
-    // }
+    for line in contents.lines(){
+        for ch in line.chars(){
+            let file = File::open(format!("strokes/{}.stroke", ch));
+            let file_err = File::open(format!("strokes/{}.stroke_err", ch));
+            if file.is_err() && file_err.is_err(){
+                //println!("没有{}的文件", ch);
+                let result = get_strokes(ch);
+                if let Some(strokes) = result{
+                    //println!("{:?}", strokes);
+                    let strokes = strokes.1;
+                    let encoded: Vec<u8> = serialize(&strokes).unwrap();
+                    let mut file = File::create(format!("strokes/{}.stroke", ch)).unwrap();
+                    file.write_all(&encoded).unwrap();
+                }else{
+                    //println!("找不到{}的笔画，删除", ch);
+                    let mut file = File::create(format!("strokes/{}.stroke_err", ch)).unwrap();
+                    file.write_all(b"").unwrap();
+                }
+            }
+        }    
+    }
     
     // return;
 
