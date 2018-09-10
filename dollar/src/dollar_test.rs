@@ -1,7 +1,7 @@
 use piston_window::*;
 
 //多笔画测试
-fn point_cloud_plus_demo() {
+pub fn point_cloud_plus_demo() {
     use pdollarplus::{PDollarPlusRecognizer, Point};
     use std::io;
     let mut pdollarplus = PDollarPlusRecognizer::new();

@@ -74,9 +74,10 @@ impl PointCloud {
     fn new(name: &str, points: Vec<Point>) -> PointCloud {
         let points = resample(points, NUM_POINTS);
         let points = scale(&points);
+        let points = translate_to(&points, &ORIGIN);
         PointCloud {
             name: name.to_string(),
-            points: translate_to(&points, &ORIGIN),
+            points: compute_normalized_turning_angle(&points),
         }
     }
 }
@@ -543,16 +544,9 @@ fn scale(points: &Vec<Point>) -> Vec<Point> {
 }
 
 fn resample(mut points: Vec<Point>, n: usize) -> Vec<Point> {
-    //println!("resample之前:{:?}", points);
     let len = path_length(&points) / (n as f64 - 1.0); // interval length
     let mut dist = 0.0;
     let mut new_points = vec![points[0].clone()];
-
-    //println!("len={:?}", len);
-
-    // if len == 0.0{
-    //     println!("points={:?}", points);
-    // }
 
     let mut i = 1;
     while i < points.len() {

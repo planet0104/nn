@@ -10,13 +10,13 @@ use std::rc::Rc;
 use std::cell::{RefCell, RefMut};
 use stdweb::traits::*;
 use stdweb::unstable::TryInto;
-use stdweb::web::event::{ClickEvent, IEvent};
+use stdweb::web::event::{ClickEvent, PointerDownEvent, PointerUpEvent, PointerOutEvent, PointerMoveEvent, IEvent};
 use stdweb::web::html_element::CanvasElement;
 use stdweb::web::html_element::InputElement;
 use stdweb::web::INode;
 use stdweb::web::{document, CanvasRenderingContext2d, Element};
 use stdweb::web::html_element::ImageElement;
-use stdweb::web::TextAlign;
+use stdweb::web::{TextAlign, FillRule};
 use stdweb::web::TextBaseline;
 use stdweb::web::set_timeout;
 use stdweb::web::window;
@@ -130,6 +130,12 @@ impl Interface for CtrlInterface{
     fn log(&self, s:&str){
         js!(console.log(@{s}));
     }
+
+    fn fill_circle(&self, x: f64, y: f64, radius: f64){
+        self.context.begin_path();
+        self.context.arc(x, y, radius, 0.0, 360.0, false);
+        self.context.fill(FillRule::NonZero);
+    }
 }
 
 fn main() {
@@ -151,6 +157,27 @@ fn main() {
     CONTROLLER.with(|c| {
         *c.borrow_mut() = Some(controller);
         c.borrow_mut().as_mut().unwrap().init();
+    });
+
+    canvas.add_event_listener( move |event: PointerDownEvent| {
+        CONTROLLER.with(|c| {
+            c.borrow_mut().as_mut().unwrap().on_pointer_down(event.client_x(), event.client_y(), event.offset_x(), event.offset_y());
+        });
+    });
+    canvas.add_event_listener( move |event: PointerMoveEvent| {
+        CONTROLLER.with(|c| {
+            c.borrow_mut().as_mut().unwrap().on_pointer_move(event.client_x(), event.client_y(), event.offset_x(), event.offset_y());
+        });
+    });
+    canvas.add_event_listener( move |event: PointerOutEvent| {
+        CONTROLLER.with(|c| {
+            c.borrow_mut().as_mut().unwrap().on_pointer_out(event.client_x(), event.client_y(), event.offset_x(), event.offset_y());
+        });
+    });
+    canvas.add_event_listener( move |event: PointerUpEvent| {
+        CONTROLLER.with(|c| {
+            c.borrow_mut().as_mut().unwrap().on_pointer_up(event.client_x(), event.client_y(), event.offset_x(), event.offset_y());
+        });
     });
     
     stdweb::event_loop();

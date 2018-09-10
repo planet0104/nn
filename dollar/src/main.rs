@@ -7,6 +7,7 @@ mod ndollar;
 mod pdollar;
 mod pdollarplus;
 mod fetch_stroke;
+mod dollar_test;
 
 use piston_window::*;
 use std::fs::File;
@@ -129,7 +130,8 @@ fn main() {
     //unistroke_demo();
     //multistroke_demo();
     //point_cloud_demo();
-    //point_cloud_plus_demo();
+    //dollar_test::point_cloud_plus_demo();
+    //return;
 
     /*
     APP名称：拾字
@@ -333,6 +335,29 @@ fn main() {
                         [p[0], p[1]]
                     }).collect();
                 }
+            }
+
+            //折开头的小尾巴去掉
+            //如果仕折，并且第一个点和第二个点的距离小于60，删除第一个点
+            if stroke_orders[si] == 5{
+                let dx = new_points[1][0] as f64 - new_points[0][0] as f64;
+                let dy = new_points[1][1] as f64 - new_points[0][1] as f64;
+                let dist = (dx * dx + dy * dy).sqrt();
+                if dist<=60.0{
+                    new_points.remove(0);
+                }
+            }
+
+            //如果是横并且有三个点，去掉结尾的小尾巴
+            //如果是横，只要起点和终点
+            let len = new_points.len();
+            if stroke_orders.len()>si && stroke_orders[si] == 1 && len==3{
+                if new_points[2][0] < new_points[1][0]{
+                    new_points = vec![ new_points[2], new_points[0]];
+                }
+                // if ch == '饕'{
+                //     println!("横={:?}", new_points);
+                // }
             }
 
             new_data.push(new_points);
