@@ -1,3 +1,4 @@
+#![recursion_limit="256"]
 #[macro_use]
 extern crate stdweb;
 extern crate bincode;
@@ -34,6 +35,8 @@ thread_local!{
 struct CtrlInterface{
     context: CanvasRenderingContext2d,
     brush: ImageElement,
+    error_icon: ImageElement,
+    ok_icon: ImageElement
 }
 
 impl Interface for CtrlInterface{
@@ -136,6 +139,31 @@ impl Interface for CtrlInterface{
         self.context.arc(x, y, radius, 0.0, 360.0, false);
         self.context.fill(FillRule::NonZero);
     }
+
+    fn rotate(&self, angle: f64){
+        self.context.rotate(angle);
+    }
+    fn window_width(&self) -> i32{
+        window().inner_width()
+    }
+    fn window_height(&self) -> i32{
+        window().inner_height()
+    }
+    fn set_canvas_width(&self, width: u32){
+        self.context.get_canvas().set_width(width);
+    }
+    fn set_canvas_height(&self, height: u32){
+        self.context.get_canvas().set_height(height);
+    }
+    fn log_div(&self, s:&str){
+        js!( document.getElementById("log").innerHTML = @{s}+"<br/>"+document.getElementById("log").innerHTML );
+    }
+    fn show_error_icon(&self, x:f64, y:f64){
+        self.context.draw_image(self.error_icon.clone(), x, y).unwrap();
+    }
+    fn show_ok_icon(&self, x:f64, y:f64){
+        self.context.draw_image(self.ok_icon.clone(), x, y).unwrap();
+    }
 }
 
 fn main() {
@@ -146,12 +174,18 @@ fn main() {
         .unwrap()
         .try_into()
         .unwrap();
-    let bursh = ImageElement::new();
-    bursh.set_src("brush.png");
+    let brush = ImageElement::new();
+    brush.set_src("brush.png");
+    let error_icon = ImageElement::new();
+    error_icon.set_src("error.png");
+    let ok_icon = ImageElement::new();
+    ok_icon.set_src("ok.png");
 
     let controller = Controller::new(Box::new(CtrlInterface{
         context: canvas.get_context().unwrap(),
-        brush: bursh,        
+        brush,
+        error_icon,
+        ok_icon
     }));
 
     CONTROLLER.with(|c| {
@@ -169,16 +203,49 @@ fn main() {
             c.borrow_mut().as_mut().unwrap().on_pointer_move(event.client_x(), event.client_y(), event.offset_x(), event.offset_y());
         });
     });
-    canvas.add_event_listener( move |event: PointerOutEvent| {
+    canvas.add_event_listener( move |_event: PointerOutEvent| {
         CONTROLLER.with(|c| {
-            c.borrow_mut().as_mut().unwrap().on_pointer_out(event.client_x(), event.client_y(), event.offset_x(), event.offset_y());
+            c.borrow_mut().as_mut().unwrap().on_pointer_out();
         });
     });
-    canvas.add_event_listener( move |event: PointerUpEvent| {
+    canvas.add_event_listener( move |_event: PointerUpEvent| {
         CONTROLLER.with(|c| {
-            c.borrow_mut().as_mut().unwrap().on_pointer_up(event.client_x(), event.client_y(), event.offset_x(), event.offset_y());
+            c.borrow_mut().as_mut().unwrap().on_pointer_up();
         });
     });
+
+    //触摸事件
+    let on_touch_event = |event_type:String, client_x:i32, client_y:i32, offset_x:f64, offset_y:f64| {
+        CONTROLLER.with(|c|{
+            match event_type.as_str(){
+                "touchstart" => c.borrow_mut().as_mut().unwrap().on_pointer_down(client_x, client_y, offset_x, offset_y),
+                "touchmove" => c.borrow_mut().as_mut().unwrap().on_pointer_move(client_x, client_y, offset_x, offset_y),
+                "touchend" => c.borrow_mut().as_mut().unwrap().on_pointer_up(),
+                "touchcancel" => c.borrow_mut().as_mut().unwrap().on_pointer_out(),
+                _ => ()
+            }
+        });
+    };
+    js! {
+        var on_touch_event = @{on_touch_event};
+        var canvas = document.getElementById("canvas");
+        canvas.addEventListener("touchstart", function(e){
+            e.preventDefault();
+            var touch = e.targetTouches[0];
+            on_touch_event("touchstart", touch.clientX, touch.clientY, touch.clientX-canvas.offsetLeft, touch.clientY-canvas.offsetTop);
+        }, false);
+        canvas.addEventListener("touchmove", function(e){
+            e.preventDefault();
+            var touch = e.targetTouches[0];
+            on_touch_event("touchmove", touch.clientX, touch.clientY, touch.clientX-canvas.offsetLeft, touch.clientY-canvas.offsetTop);
+        },false);
+        canvas.addEventListener("touchend", function(e){
+            on_touch_event("touchend", 0, 0, 0, 0);
+        },false);
+        canvas.addEventListener("touchcancel", function(e){
+            on_touch_event("touchcancel", 0, 0, 0, 0);
+        },false);
+    }
     
     stdweb::event_loop();
 }

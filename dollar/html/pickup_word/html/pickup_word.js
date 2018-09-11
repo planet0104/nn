@@ -485,23 +485,29 @@ Module.STDWEB_PRIVATE.acquire_tmp = function( dummy ) {
     return {
         imports: {
             env: {
-                "__extjs_496ebd7b1bc0e6eebd7206e8bee7671ea3b8006f": function($0, $1, $2) {
-                $1 = Module.STDWEB_PRIVATE.to_js($1);$2 = Module.STDWEB_PRIVATE.to_js($2);Module.STDWEB_PRIVATE.from_js($0, (function(){return ($1). querySelector (($2));})());
-            },
-            "__extjs_80d6d56760c65e49b7be8b6b01c1ea861b046bf0": function($0) {
-                Module.STDWEB_PRIVATE.decrement_refcount( $0 );
-            },
-            "__extjs_2034053b7b6771271a2dad3e5416b045a74488a1": function($0, $1, $2, $3) {
-                Module.STDWEB_PRIVATE.acquire_js_reference( $0 ).setTimeout( function() {Module.STDWEB_PRIVATE.dyncall( 'vi', $1, [$2] );}, $3 );
-            },
-            "__extjs_5984245de8b6ef88f693ba2383ebf3c2f9718c6c": function($0) {
+                "__extjs_5984245de8b6ef88f693ba2383ebf3c2f9718c6c": function($0) {
                 var o = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (o instanceof HTMLCanvasElement) | 0;
             },
             "__extjs_9f22d4ca7bc938409787341b7db181f8dd41e6df": function($0) {
                 Module.STDWEB_PRIVATE.increment_refcount( $0 );
             },
+            "__extjs_80d6d56760c65e49b7be8b6b01c1ea861b046bf0": function($0) {
+                Module.STDWEB_PRIVATE.decrement_refcount( $0 );
+            },
             "__extjs_d220ae70d3a0134672f453b7b2651d9c11f72dbf": function($0, $1) {
                 $1 = Module.STDWEB_PRIVATE.to_js($1);Module.STDWEB_PRIVATE.from_js($0, (function(){console.log (($1))})());
+            },
+            "__extjs_ea0c73f1ba6a83436c31f0e56b32e78ac79ef526": function($0, $1) {
+                $1 = Module.STDWEB_PRIVATE.to_js($1);Module.STDWEB_PRIVATE.from_js($0, (function(){document.getElementById ("log"). innerHTML = ($1)+ "<br/>" + document.getElementById ("log"). innerHTML})());
+            },
+            "__extjs_d2a7ab5303126819bb5b442ebe08f94cb0604dec": function($0, $1) {
+                $1 = Module.STDWEB_PRIVATE.to_js($1);Module.STDWEB_PRIVATE.from_js($0, (function(){var on_touch_event = ($1); var canvas = document.getElementById ("canvas"); canvas.addEventListener ("touchstart" , function (e){e.preventDefault (); var touch = e.targetTouches [0]; on_touch_event ("touchstart" , touch.clientX , touch.clientY , touch.clientX - canvas.offsetLeft , touch.clientY - canvas.offsetTop);}, false); canvas.addEventListener ("touchmove" , function (e){e.preventDefault (); var touch = e.targetTouches [0]; on_touch_event ("touchmove" , touch.clientX , touch.clientY , touch.clientX - canvas.offsetLeft , touch.clientY - canvas.offsetTop);}, false); canvas.addEventListener ("touchend" , function (e){on_touch_event ("touchend" , 0 , 0 , 0 , 0);}, false); canvas.addEventListener ("touchcancel" , function (e){on_touch_event ("touchcancel" , 0 , 0 , 0 , 0);}, false);})());
+            },
+            "__extjs_496ebd7b1bc0e6eebd7206e8bee7671ea3b8006f": function($0, $1, $2) {
+                $1 = Module.STDWEB_PRIVATE.to_js($1);$2 = Module.STDWEB_PRIVATE.to_js($2);Module.STDWEB_PRIVATE.from_js($0, (function(){return ($1). querySelector (($2));})());
+            },
+            "__extjs_2034053b7b6771271a2dad3e5416b045a74488a1": function($0, $1, $2, $3) {
+                Module.STDWEB_PRIVATE.acquire_js_reference( $0 ).setTimeout( function() {Module.STDWEB_PRIVATE.dyncall( 'vi', $1, [$2] );}, $3 );
             },
             "__extjs_93677063bfe06049229cc979f161294aa83b0bfe": function($0) {
                 var o = Module.STDWEB_PRIVATE.acquire_js_reference( $0 );return (o instanceof PointerEvent && o.type === "pointerup") | 0;
@@ -593,6 +599,9 @@ Module.STDWEB_PRIVATE.acquire_tmp = function( dummy ) {
             "__extjs_052eb90e4be7830195f8967b85b711a37cf0626c": function($0) {
                 $0 = Module.STDWEB_PRIVATE.to_js($0);($0). restore ();
             },
+            "__extjs_de08a566f88f5ce4582cd2816abf86f3c7a86f56": function($0, $1) {
+                $0 = Module.STDWEB_PRIVATE.to_js($0);$1 = Module.STDWEB_PRIVATE.to_js($1);($0). rotate (($1));
+            },
             "__extjs_304c4a1c2f732cddb1e7923aa13a2f36e90e8d0f": function($0) {
                 $0 = Module.STDWEB_PRIVATE.to_js($0);($0). save ();
             },
@@ -656,8 +665,20 @@ Module.STDWEB_PRIVATE.acquire_tmp = function( dummy ) {
             "__extjs_74d5764ddc102a8d3b6252116087a68f2db0c9d4": function($0) {
                 Module.STDWEB_PRIVATE.from_js($0, (function(){return window ;})());
             },
+            "__extjs_ae3cbd224f9d5c5e82750fd6b9d46fd91b2f397a": function($0, $1) {
+                $1 = Module.STDWEB_PRIVATE.to_js($1);Module.STDWEB_PRIVATE.from_js($0, (function(){return ($1). innerWidth ;})());
+            },
+            "__extjs_66cd7b3158f81a269e6c4e919e80a10441401908": function($0, $1) {
+                $1 = Module.STDWEB_PRIVATE.to_js($1);Module.STDWEB_PRIVATE.from_js($0, (function(){return ($1). innerHeight ;})());
+            },
+            "__extjs_690fa77630cde409b06b28d7cb33cf9d181b389e": function($0, $1) {
+                $0 = Module.STDWEB_PRIVATE.to_js($0);$1 = Module.STDWEB_PRIVATE.to_js($1);($0). height = ($1);
+            },
             "__extjs_6c47cfe7b20d140c462be80002863de205806d99": function($0, $1) {
                 $1 = Module.STDWEB_PRIVATE.to_js($1);Module.STDWEB_PRIVATE.from_js($0, (function(){return ($1). width ;})());
+            },
+            "__extjs_9b6375c037b486fe12587b716aff148f791f3e6a": function($0, $1) {
+                $0 = Module.STDWEB_PRIVATE.to_js($0);$1 = Module.STDWEB_PRIVATE.to_js($1);($0). width = ($1);
             },
             "__extjs_0aced9e2351ced72f1ff99645a129132b16c0d3c": function($0) {
                 var value = Module.STDWEB_PRIVATE.get_raw_value( $0 );return Module.STDWEB_PRIVATE.register_raw_value( value );

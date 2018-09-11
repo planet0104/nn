@@ -4,21 +4,26 @@
 <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=1" name="viewport" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
     <style>
+        body{
+            margin: 0px;
+        }
         @font-face{
             font-family: FZKTJW;
-            src: url('./FZKTJW.TTF')
+            src: url('FZKTJW.TTF')
         }
         #canvas{
-
+            margin-top: 60px;
         }
     </style>
 </head>
 <body>
 <script src="pickup_word.js"></script>
-<canvas id="canvas" width="400" height="400"></canvas>
+<canvas id="canvas"></canvas>
+<div id="log"></div>
 <script>
+    
 </script>
 <img src="brush.png" style="display:none;" />
 </body>

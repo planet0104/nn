@@ -1,8 +1,10 @@
 mod pdollarplus;
+mod vector;
 const DATA:&[u8] = include_bytes!("../../stroke_data");
 use bincode::deserialize;
 use std::collections::HashMap;
 use self::pdollarplus::{Point, resample, PDollarPlusRecognizer};
+//use std::f64::consts::PI;
 
 /*
 
@@ -38,6 +40,8 @@ pub trait Interface{
     fn fill_text(&self, text: &str, x: f64, y: f64, max_width: Option<f64>);
     fn canvas_width(&self) -> u32;
     fn canvas_height(&self) -> u32;
+    fn set_canvas_width(&self, width: u32);
+    fn set_canvas_height(&self, height: u32);
     fn set_line_dash(&self, segments: Vec<f64>);
     fn save(&self);
     fn restore(&self);
@@ -47,19 +51,31 @@ pub trait Interface{
     fn darw_brush(&self, x:f64, y:f64);
     fn brush_height(&self) -> f64;
     fn next_frame(&self, delay: u32);
-    fn log(&self, str:&str);
+    fn log(&self, s:&str);
+    fn log_div(&self, s:&str);
+    fn rotate(&self, angle: f64);
+    fn window_width(&self) -> i32;
+    fn window_height(&self) -> i32;
+    fn show_error_icon(&self, x:f64, y:f64);
+    fn show_ok_icon(&self, x:f64, y:f64);
 }
 
 pub struct Controller{
     interface: Box<Interface>,
     strokes_map: HashMap<char, Vec<Vec<[i32;2]>>>,
     stroke_anim: Vec<Point>, //当前动画的指示器，每当新的笔画开始，数组清空，每一帧的时候放入一个当前笔画的点，直到数组长度和当前笔画点数相等。
-    character: Option<char>,
+    character: usize, //当前第几个字
+    drawing_ch: Option<char>, //当前绘制的字
     strokes: Vec<Vec<Point>>,
     stroke_index: usize,
     user_strokes: Vec<Vec<Point>>,//用户的笔画
+    stroke_scores: Vec<f64>,
     writing: bool, //正在写入
-    complete: bool, //当前文字已写完
+    complete: bool, //当前文字已写完,
+    homework: String,
+    animating: bool,
+    error_icon: Option<Point>,
+    ok_icon: Option<Point>,
 }
 
 impl Controller{
@@ -68,18 +84,25 @@ impl Controller{
             strokes_map: deserialize(&DATA[..]).unwrap(),
             stroke_anim: vec![],
             interface: interface,
-            character: None,
+            character: 0,
             stroke_index: 0,
             strokes: vec![],
             user_strokes: vec![],
             writing: false,
-            complete: false
+            complete: false,
+            homework: "静夜思 李白\n床前明月光，疑是地上霜。\n举头望明月，低头思故乡。".to_string(),
+            //homework: "故乡。".to_string(),
+            animating: false,
+            drawing_ch: None,
+            stroke_scores: vec![],
+            error_icon: None,
+            ok_icon: None,
         }
     }
 
     //更新动画
     pub fn update(&mut self) -> bool{
-        //let log = format!("controller::update 长度:{} {:?}", self.brush_anim.len(), self.brush_anim.get(0));
+        //let log = format!("controller::update 长度:{}", self.stroke_anim.len());
         //self.interface.log(&log);
         let anim_len = self.stroke_anim.len();
         if anim_len < self.strokes[self.stroke_index].len(){
@@ -88,6 +111,8 @@ impl Controller{
             true
         }else{
             self.on_animation_end();
+            self.stroke_anim.clear();
+            self.render();
             false
         }
     }
@@ -98,6 +123,7 @@ impl Controller{
         let interface = &self.interface;
 
         //----------------- 画田字格 --------------------------
+        interface.set_line_dash(vec![]);
         interface.begin_path();
         let (width, height) = (interface.canvas_width(), interface.canvas_height());
         interface.set_fill_style_color("#eae4c6");
@@ -121,15 +147,20 @@ impl Controller{
         //--------------------- 画字 ----------------------------------
         let font_size = width as f64 * 0.9;
         interface.set_font(&format!("{}px FZKTJW", font_size as i32));
-        interface.set_fill_style_color("#6674787a");
+        interface.set_fill_style_color("rgb(116,120,122,0.5)");
         interface.set_text_align("center");
         interface.set_text_baseline("middle");
-        interface.fill_text(&self.character.unwrap().to_string(), width as f64/2.0, height as f64/2.0+font_size*0.045, None);
+        let drawing_ch = if let Some(ch) = self.drawing_ch{
+            ch
+        }else{
+            self.homework.chars().nth(self.character).unwrap()
+        };
+        interface.fill_text(&drawing_ch.to_string(), width as f64/2.0, height as f64/2.0+font_size*0.045, None);
 
         //------------------ 绘制用户的笔画 -----------------------------
         interface.begin_path();
         interface.set_line_dash(vec![]);
-        interface.set_stroke_style_color("#f00");
+        interface.set_stroke_style_color("#777");
         interface.set_line_width(10.0);
         for points in &self.user_strokes{
             interface.move_to(points[0].x, points[0].y);
@@ -169,49 +200,39 @@ impl Controller{
         //     }
         // }
         // interface.stroke();
-        
-        //绘制笔画指示器
-        interface.set_fill_style_color("#773399cc");
-        interface.set_stroke_style_color("#773399cc");
-        interface.set_line_width(8.0);
-        //在最后一个点画箭头
-        
-        for i in 0..self.stroke_anim.len(){
-            let point = &self.stroke_anim[i];
-            if i<=6{//画3个圆点
-                if i%3 == 0{
-                    self.interface.fill_circle(point.x, point.y, 6.0);
-                }
-            }
-            if i==9{
-                self.interface.begin_path();
-                self.interface.move_to(self.stroke_anim[i].x, self.stroke_anim[i].y);
-            }
-            if i>9{
-                self.interface.line_to(self.stroke_anim[i].x, self.stroke_anim[i].y);
-            }
+
+        //绘制画笔
+        if self.stroke_anim.len()>0{
+            interface.darw_brush(self.stroke_anim.last().unwrap().x, self.stroke_anim.last().unwrap().y - interface.brush_height());   
         }
-        if self.stroke_anim.len()>9{
-            self.interface.stroke();
+
+        if let Some(pos) = &self.error_icon{
+            interface.show_error_icon(pos.x, pos.y);
+        }
+        if let Some(pos) = &self.ok_icon{
+            interface.show_ok_icon(pos.x, pos.y);
         }
 
         interface.restore();
     }
 
     pub fn init(&mut self){
-        self.character = Some('繁');
+        self.interface.set_canvas_width(self.interface.window_width() as u32);
+        self.interface.set_canvas_height(self.interface.window_width() as u32);
         //爨、躞 的笔画是错的
         //辨的中间一笔画有问题
         //
         self.create_strokes();
-        self.animate(60);
+        self.animate(30);
     }
 
     pub fn on_animation_end(&mut self){
+        self.animating = false;
         self.interface.log(&format!("第{}笔动画结束", self.stroke_index));
     }
 
     pub fn animate(&mut self, delay: u32){
+        self.animating = true;
         self.render();
         let update = self.update();
         if update{
@@ -221,11 +242,12 @@ impl Controller{
 
     //创建笔画数组
     pub fn create_strokes(&mut self){
-        let strokes:&Vec<Vec<[i32;2]>> = self.strokes_map.get(&self.character.unwrap()).unwrap();
-        self.interface.log(&format!("一共{}笔", strokes.len()));
+        //self.interface.log(&format!("create_strokes character={}", self.character));
+        let strokes:&Vec<Vec<[i32;2]>> = self.strokes_map.get(&self.homework.chars().nth(self.character).unwrap()).unwrap();
+        //self.interface.log(&format!("一共{}笔", strokes.len()));
         self.strokes.clear();
         for i in 0..strokes.len(){
-            self.interface.log(&format!("第{}笔 {:?}", i, strokes[i]));
+            //self.interface.log(&format!("第{}笔 {:?}", i, strokes[i]));
             self.strokes.push(
                 resample(strokes[i].iter().map(|p|{
                     Point::new(p[0], p[1], i+1)
@@ -234,19 +256,30 @@ impl Controller{
         }
     }
 
+    /**
+     * 低于50分不通过。
+     * 笔画差距超过16不通过。
+     */
     fn calculate_score(&mut self){
+        self.writing = false;
         self.interface.log("计算当前笔画得分...");
+
         let mut recognizer = PDollarPlusRecognizer::new();
-        //将当前笔画加入识别器
-        recognizer.add_gesture("stroke", self.strokes[self.stroke_index].clone());
-        //识别用户当前笔画
-        let result = recognizer.recognize(self.user_strokes[self.stroke_index].clone());
-        self.interface.log(&format!("笔画得分:{} > {}分", result.name, result.score));
+
+        //笔画少于10点重写
+        if self.user_strokes[self.stroke_index].len()>5{
+            //将当前笔画加入识别器
+            recognizer.add_gesture("stroke", self.strokes[self.stroke_index].clone());
+            //识别用户当前笔画
+            let result = recognizer.recognize(self.user_strokes[self.stroke_index].clone());
+            self.interface.log_div(&format!("笔画得分:{} > {}分", result.name, result.score));
+            self.stroke_scores.push(result.score);
+        }else{
+            self.stroke_scores.push(100.0);
+        }
 
         //检查是否写完
         if self.user_strokes.len() == self.strokes.len(){
-            self.complete = true;
-
             //检查整个汉字是否正确
             recognizer.clear_gestures();
             let mut points = vec![];
@@ -254,7 +287,7 @@ impl Controller{
                 points.append(&mut stroke.clone());
             }
             //self.interface.log(&format!("原始:{:?}", points));
-            recognizer.add_gesture(&self.character.unwrap().to_string(), points);
+            recognizer.add_gesture(&self.homework.chars().nth(self.character).unwrap().to_string(), points);
             
             let mut user_points = vec![];
             for i in 0..self.user_strokes.len(){
@@ -264,21 +297,111 @@ impl Controller{
             }
             //self.interface.log(&format!("用户:{:?}", user_points));
             let result = recognizer.recognize(user_points);
-            self.interface.log(&format!("整字得分:{} > {}分", result.name, result.score));
+            // 写3分算满分的话，10.0-3.0=7.0
+            //写5分, 10.0-5.0=4.0, 得0.66分
+            let score1 = (10.0-result.score)/5.0;
+            //计算每个笔画的得分， 超出10分减分，小于10分加分
 
-            self.interface.log("完成.");
-        }
+            //假设每笔写 1.0满分,笔画为3笔 那么满分为 10-1=9, 满分27
+            let mut total_score = 0.0;
+            for score in &self.stroke_scores{
+                total_score += 10.0-score;
+            }
+            //1.5满分
+            let score2 = (total_score/(8.5*self.strokes.len() as f64))*90.0;
+            self.interface.log_div(&format!("整字得分:{}分", score1));
+            
+            self.interface.log_div(&format!("笔画得分:{}", score2));
+            //最高100分
+            let total = (score1*score2) as i32;
+            self.interface.log_div(&format!("总分:{}", if total>100{100}else{total}));
+            self.stroke_scores.clear();
 
-        self.writing = false;
-        if !self.complete{
-            //切换到下一笔画
-            self.stroke_index += 1;
-            self.stroke_anim.clear();
-            self.animate(60);
+            //如果得分低于50分，重写
+            if total<50{
+                //清空用户笔画和得分
+                self.user_strokes.clear();
+                self.stroke_index = 0;
+                self.stroke_scores.clear();
+                if self.animating{
+                    self.stroke_anim.clear();
+                }else{
+                    self.animate(30);
+                }
+                self.interface.log("重写当前字");
+            }else{
+                //切换到下一个字
+                if self.character >= self.homework.len(){
+                    self.complete = true;
+                }
+                if !self.complete{
+                    self.character += 1;
+                    let mut ch = self.homework.chars().nth(self.character);
+                    //跳过标点符号
+                    while !ch.is_none() && self.strokes_map.get(&ch.unwrap()).is_none(){
+                        self.interface.log(&format!("跳过{}", ch.unwrap()));
+                        self.character += 1;
+                        ch = self.homework.chars().nth(self.character);
+                    }
+                    if ch.is_none(){
+                        self.complete = true;
+                    }
+                    if !self.complete{
+                        self.drawing_ch = ch;
+                        self.stroke_index = 0;
+                        self.create_strokes();
+                        self.user_strokes.clear();
+                        if self.animating{
+                            self.stroke_anim.clear();
+                        }else{
+                            self.animate(30);
+                        }
+                        self.interface.log("下一个字");
+                    }
+                }
+                if self.complete{
+                    self.interface.log("完成.");
+                }
+            }
+        }else{
+            if !self.complete{
+                //笔画距离超过15不通过
+                if self.stroke_scores[self.stroke_index] < 7.0{
+                    //切换到下一笔画
+                    self.stroke_index += 1;
+                    //显示对勾
+                    if self.ok_icon.is_some(){
+                        self.ok_icon = None;
+                    }
+                    if self.error_icon.is_some(){
+                        self.ok_icon = self.error_icon.clone();
+                        self.error_icon = None;
+                    }
+                }else{
+                    //删除当前笔画得分
+                    self.stroke_scores.remove(self.stroke_index);
+                    //清空当前错误的笔画
+                    self.user_strokes.remove(self.stroke_index);
+                    //显示错误图标
+                    self.ok_icon = None;
+                    self.error_icon = Some(self.strokes[self.stroke_index][0].clone());
+                    self.interface.log("清空当前错误的笔画");
+                }
+                if self.animating{
+                    self.stroke_anim.clear();
+                }else{
+                    self.animate(30);
+                }
+            }
         }
     }
 
-    pub fn on_pointer_down(&mut self, client_x:i32, client_y:i32, offset_x:f64, offset_y:f64){
+    fn log_usize(&self, s:&str, val: usize){
+        self.interface.log(&format!("{}{}", s, val));
+    }
+
+    pub fn on_pointer_down(&mut self, _client_x:i32, _client_y:i32, offset_x:f64, offset_y:f64){
+        self.interface.log("按下");
         if self.complete{
             self.interface.log("已完成.");
             return;
@@ -288,20 +411,20 @@ impl Controller{
         self.writing = true;
     }
 
-    pub fn on_pointer_up(&mut self, client_x:i32, client_y:i32, offset_x:f64, offset_y:f64){
+    pub fn on_pointer_up(&mut self){
         if self.writing{
             self.calculate_score();
         }
     }
 
-    pub fn on_pointer_move(&mut self, client_x:i32, client_y:i32, offset_x:f64, offset_y:f64){
+    pub fn on_pointer_move(&mut self, _client_x:i32, _client_y:i32, offset_x:f64, offset_y:f64){
         if self.writing{
             //加入画点
             self.user_strokes[self.stroke_index].push(Point::new(offset_x, offset_y, self.stroke_index+1));
             self.render();
         }
     }
-    pub fn on_pointer_out(&mut self, client_x:i32, client_y:i32, offset_x:f64, offset_y:f64){
+    pub fn on_pointer_out(&mut self){
         if self.writing{
             self.calculate_score();
         }

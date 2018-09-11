@@ -310,7 +310,7 @@ fn path_length(points: &Vec<Point>) -> f64 {
     d
 }
 
-fn distance(p1: &Point, p2: &Point) -> f64 {
+pub fn distance(p1: &Point, p2: &Point) -> f64 {
     // Euclidean distance between two points
     let dx = p2.x - p1.x;
     let dy = p2.y - p1.y;
