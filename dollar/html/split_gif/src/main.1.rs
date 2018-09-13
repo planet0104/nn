@@ -38,7 +38,7 @@ use gif::{Frame, ColorOutput, Encoder, Decoder, Repeat, SetParameter};
 use gif_dispose::Screen;
 use image::{ImageBuffer, RgbImage, Rgb};
 
-const SIZE:usize = 300;
+const SIZE:usize = 255;
 
 fn main() {
     let file = File::open("tao.gif").unwrap();
@@ -98,14 +98,20 @@ fn main() {
                 }
            }
         }
-        //buffer_clone为差异，检测其边缘
-        let edges = retina::edge_detect(SIZE as u32, SIZE as u32, &buffer_clone, vec![100]);
-        let contours = retina::edge_track(edges);
-        if contours.len()==0{
-            stroke_id += 1;
+        if buffer_clone.len()>0{
+            //缩放为SIZE*SIZE
+            let mut dst = vec![0;SIZE*SIZE*3];
+            let mut resizer = resize::new(300, 300, SIZE, SIZE, RGB24, Lanczos3);
+            resizer.resize(&buffer_clone, &mut dst);
+            //buffer_clone为差异，检测其边缘
+            let edges = retina::edge_detect(SIZE as u32, SIZE as u32, &dst, vec![100]);
+            let contours = retina::edge_track(edges);
+            if contours.len()==0{
+                stroke_id += 1;
+            }
+            //id，边缘，原始buffer
+            contours_list.push((stroke_id, contours, dst));
         }
-        //id，边缘，原始buffer
-        contours_list.push((stroke_id, contours, buffer_clone));
 
         last_buffer = buffer.clone();
     }
@@ -131,11 +137,10 @@ fn main() {
     strokes.retain(|stroke| !(stroke.len()==1 && stroke[0].0.len()<30));
 
     //Vec<Vec<(Vec<Point>, Vec<u8>)>>
-    
-    let mut whole_strokes:Vec<Vec<Vec<retina::Point>>> = vec![];
+    /*
     //生成每个笔画完整的轮廓
     let mut i = 1;
-    for stroke in &strokes{
+    for stroke in strokes{
         let mut stroke_buffer = vec![0; SIZE*SIZE*3];
         for blocks in stroke{
             //(Vec<Point>, Vec<u8>)
@@ -196,7 +201,6 @@ fn main() {
         //边缘检测的笔画(一个完整的笔画)
         let edges = retina::edge_detect(SIZE as u32, SIZE as u32, &stroke_buffer, vec![100]);
         let contours = retina::edge_track(edges);
-        whole_strokes.push(contours.clone());
         let mut edge_buffer = vec![0; SIZE*SIZE*3];
         for points in contours{
             for point in points{
@@ -207,14 +211,15 @@ fn main() {
             }
         }
         
-        image::save_buffer(&format!("stroke_edges{}.bmp", i), &edge_buffer, SIZE as u32, SIZE as u32, image::RGB(8)).unwrap();
+        image::save_buffer(&format!("stroke_edges{}.bmp", i), &edge_buffer, SIZE, SIZE, image::RGB(8)).unwrap();
 
         i+=1;
     }
 
+    */
+
     //压缩数据
     //Vec<Vec<(Vec<Point>, Vec<u8>)>>
-    let strokes = whole_strokes;
     let strokes = {
         let mut new_strokes = vec![];
         for stroke in strokes{//每一笔
@@ -222,23 +227,23 @@ fn main() {
             for block in stroke{//每一块
                 let mut new_points = vec![];
                 //每个点
-                new_points.push(block[0].clone());
+                new_points.push(block.0[0].clone());
                 let mut cursor = 1;
-                let block_len = block.len();
+                let block_len = block.0.len();
                 while cursor<block_len{
                     let mut count = 0;
-                    while cursor<block_len && block[cursor].x == block[cursor-1].x{//检查竖线
+                    while cursor<block_len && block.0[cursor].x == block.0[cursor-1].x{//检查竖线
                         cursor += 1;
                         count += 1;
                     }
                     if count>1{
-                        new_points.push(block[cursor-count].clone());
-                        new_points.push(block[cursor-1].clone());
+                        new_points.push(block.0[cursor-count].clone());
+                        new_points.push(block.0[cursor-1].clone());
                     }else{
                         if count == 1{
-                            new_points.push(block[cursor-1].clone());    
+                            new_points.push(block.0[cursor-1].clone());    
                         }else{
-                            new_points.push(block[cursor].clone());
+                            new_points.push(block.0[cursor].clone());
                             cursor += 1;
                         }
                     }
@@ -640,11 +645,11 @@ fn main() {
 
     println!("笔画数量:{}", strokes.len());
 
-    //序列化 Vec<Vec<Vec<Point>>> to Vec<Vec<Vec<(i16,i16)>>>
-    let data:Vec<Vec<Vec<(i16,i16)>>> = strokes.iter().map(|stroke|{
+    //序列化 Vec<Vec<Vec<Point>>> to Vec<Vec<Vec<(u8,u8)>>>
+    let data:Vec<Vec<Vec<(u8,u8)>>> = strokes.iter().map(|stroke|{
         stroke.iter().map(|rect|{
             rect.iter().map(|point|{
-                (point.x as i16, point.y as i16)
+                (point.x as u8, point.y as u8)
             }).collect()
         }).collect()
     }).collect();

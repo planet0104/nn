@@ -118,7 +118,7 @@ pub fn edge_detect(width:u32, height:u32, src:&Vec<u8>, thresholds:Vec<u8>) -> V
 /// - `src`: 图像数据.
 /// - `threshold`: 阈值 0~255
 /// - `callback`: 检测到点的回调函数
-fn edge_detect_f<F: FnMut(usize)>(width:u32, src:&Vec<u8>, thresholds:Vec<u8>, callback: &mut F){
+pub fn edge_detect_f<F: FnMut(usize)>(width:u32, src:&Vec<u8>, thresholds:Vec<u8>, callback: &mut F){
     let bytepp = 3; //RGB888
     let size = src.len();
     let src = src.as_slice();
