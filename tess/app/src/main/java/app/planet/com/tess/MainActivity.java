@@ -5,17 +5,14 @@ import android.graphics.BitmapFactory;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
-import android.util.Pair;
+import android.widget.TextView;
 
-import com.googlecode.leptonica.android.Pix;
-import com.googlecode.leptonica.android.Pixa;
 import com.googlecode.tesseract.android.ResultIterator;
 import com.googlecode.tesseract.android.TessBaseAPI;
+import com.mozilla.greetings.RustGreetings;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Iterator;
-import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     static final String TAG = MainActivity.class.getSimpleName();
@@ -34,6 +31,12 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        TextView hello = findViewById(R.id.tv_hello);
+
+        RustGreetings g = new RustGreetings();
+        String r = g.sayHello("呵呵");
+        hello.setText(r);
 
         //将tessdata文件夹解压到files文件夹
         boolean ok = false;
