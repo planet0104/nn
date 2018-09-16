@@ -14,6 +14,8 @@ import com.mozilla.greetings.RustGreetings;
 import java.io.File;
 import java.io.IOException;
 
+import cn.jiaye.lazydict.R;
+
 public class MainActivity extends AppCompatActivity {
     static final String TAG = MainActivity.class.getSimpleName();
 
@@ -34,10 +36,13 @@ public class MainActivity extends AppCompatActivity {
 
         TextView hello = findViewById(R.id.tv_hello);
 
+        long time = System.currentTimeMillis();
         RustGreetings g = new RustGreetings();
         String r = g.sayHello("呵呵");
         hello.setText(r);
+        System.out.println("验证签名耗时:"+(System.currentTimeMillis()-time)+"ms");
 
+        time = System.currentTimeMillis();
         //将tessdata文件夹解压到files文件夹
         boolean ok = false;
         try {
@@ -49,7 +54,6 @@ public class MainActivity extends AppCompatActivity {
                 }else{
                     Log.e(TAG, "tessdata解压失败");
                 }
-            }else{
                 Log.e(TAG, "tessdata已经存在");
                 ok = true;
             }
@@ -57,6 +61,7 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
             Log.e(TAG, "tessdata文件夹读取失败!");
         }
+        System.out.println("解压文件耗时:"+(System.currentTimeMillis()-time)+"ms");
 
         if(ok){
             try {
@@ -64,6 +69,7 @@ public class MainActivity extends AppCompatActivity {
                 TessBaseAPI tessBaseAPI = new TessBaseAPI();
                 Log.d(TAG, "版本:"+tessBaseAPI.getVersion());
                 tessBaseAPI.init(getFilesDir().getAbsolutePath(), "chi_sim");//参数后面有说明。
+                time = System.currentTimeMillis();
                 tessBaseAPI.setImage(bitmap);
                 String text = tessBaseAPI.getUTF8Text();
                 ResultIterator resultIterator = tessBaseAPI.getResultIterator();
@@ -73,6 +79,7 @@ public class MainActivity extends AppCompatActivity {
                 }while(resultIterator.next(level));
 
                 resultIterator.delete();
+                System.out.println("识别耗时:"+(System.currentTimeMillis()-time)+"ms");
 
                 Log.d(TAG, "识别结果:"+text);
             } catch (IOException e) {
