@@ -9,6 +9,21 @@ use std::io::prelude::*;
 extern crate zip;
 use log::Level;
 use android_logger::Filter;
+extern crate tiny_http;
+
+fn start_server(){
+    use tiny_http::{Server, Response};
+     android_logger::init_once(
+        Filter::default()
+            .with_min_level(Level::Trace)
+    );
+    let server = Server::http("127.0.0.1:8000").unwrap();
+    for request in server.incoming_requests(){
+        trace!("hello server!");
+        let response = Response::from_string("hello world!");
+        request.respond(response).unwrap();
+    }
+}
 
 // 获取包名
 fn get_package_name() -> String{
@@ -135,5 +150,11 @@ pub mod android {
 
         output.into_inner()
     }
+
+    #[no_mangle]
+    pub unsafe extern fn Java_com_mozilla_greetings_RustGreetings_serve(env: JNIEnv, _: JClass){
+        start_server();
+    }
+
 }
 
