@@ -1,0 +1,7 @@
+[package]
+name = "wasmtest"
+version = "0.1.0"
+authors = ["planet"]
+
+[dependencies]
+orion = { version = "*", default-features = false }
