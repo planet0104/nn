@@ -6,9 +6,16 @@ extern crate rand;
 extern crate bincode;
 extern crate imageproc;
 extern crate resize;
+extern crate polylabel;
+use polylabel::polylabel;
+
+extern crate geo;
+use geo::{Point, LineString, Polygon};
+
 mod retina;
 mod fetch;
 mod pdollarplus;
+use rand::{thread_rng, Rng};
 
 //网站1 https://www.hanzi5.com/bishun/7ed9.html
 //网站2 http://www.bihuashunxu.com/
@@ -29,6 +36,17 @@ mod pdollarplus;
 
 */
 
+/**
+ ---------------------
+ 第二种：
+ 完整的笔画轮廓，导致体积过大，可以考虑存储汉字黑白图片压缩数据 / 或者使用字体文件渲染文本，笔画按照相对距离计算。
+ 怎么实现中心线细化？怎么计算中心线？
+ https://stackoverflow.com/questions/1203135/what-is-the-fastest-way-to-find-the-visual-center-of-an-irregularly-shaped-pol
+
+ 计算多边形中心点!!
+    https://github.com/urschrei/polylabel-rs
+ */
+
 use resize::Pixel::RGB24;
 use resize::Type::Lanczos3;
 use bincode::serialize;
@@ -41,7 +59,7 @@ use image::{ImageBuffer, RgbImage, Rgb};
 const SIZE:usize = 300;
 
 fn main() {
-    let file = File::open("tao.gif").unwrap();
+    let file = File::open("fan.gif").unwrap();
     let mut decoder = Decoder::new(file);
 
     // Important:
@@ -133,19 +151,55 @@ fn main() {
     //Vec<Vec<(Vec<Point>, Vec<u8>)>>
     
     let mut whole_strokes:Vec<Vec<Vec<retina::Point>>> = vec![];
+
+    //至此所有的笔画块都有了(像素点)
+
     //生成每个笔画完整的轮廓
     let mut i = 1;
     for stroke in &strokes{
         let mut stroke_buffer = vec![0; SIZE*SIZE*3];
-        for blocks in stroke{
+        for (bi, blocks) in stroke.iter().enumerate(){
             //(Vec<Point>, Vec<u8>)
+            // println!("{:?}", blocks);
+            let mut rng = thread_rng();
+            let color1 = rng.gen_range(0, 255);
+            let color2 = rng.gen_range(0, 255);
+            let color3 = rng.gen_range(0, 255);
+
+            //计算中心点用
+            let mut test_buffer = vec![0; SIZE*SIZE*3];
+
             for i in (0..blocks.1.len()).step_by(3){
                 if blocks.1[i] == 0{
-                    stroke_buffer[i] = 255;
-                    stroke_buffer[i+1] = 255;
-                    stroke_buffer[i+2] = 255;
+                    stroke_buffer[i] = color1;
+                    stroke_buffer[i+1] = color2;
+                    stroke_buffer[i+2] = color3;
+
+                    test_buffer[i] = 255;
+                    test_buffer[i+1] = 255;
+                    test_buffer[i+2] = 255;
                 }
             }
+
+            //识别每个block的边缘，并计算中心点
+            let edges = retina::edge_detect(SIZE as u32, SIZE as u32, &test_buffer, vec![100]);
+            let contours = retina::edge_track(edges);
+            println!("第{}笔 block{}的边缘数量:{}", i, bi, contours.len());
+            //if i == 1 && bi==0{
+                //绘图
+                let mut image = RgbImage::new(SIZE as u32, SIZE as u32);
+                for points in contours{
+                    let mut color = Rgb([rand::random(), rand::random(), rand::random()]);
+                    println!("points长度:{}", points.len());
+                    for i in 1..points.len(){
+                        imageproc::drawing::draw_line_segment_mut(&mut image,
+                        (points[i-1].x as f32, points[i-1].y as f32),
+                        (points[i].x as f32, points[i].y as f32),
+                        color);
+                    }
+                }
+                image.save(format!("A_stroke{}_block{}.bmp", i, bi)).unwrap();
+           // }
         }
         //一幅完整的笔画
         image::save_buffer(&format!("stroke{}.bmp", i), &stroke_buffer, SIZE as u32, SIZE as u32, image::RGB(8)).unwrap();
