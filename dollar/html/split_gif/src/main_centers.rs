@@ -6,28 +6,22 @@ extern crate rand;
 extern crate bincode;
 extern crate imageproc;
 extern crate resize;
-mod retina;
-mod fetch;
-mod pdollarplus;
-extern crate bzip2;
-use bzip2::Compression;
-use std::io::prelude::*;
-use bzip2::read::{BzEncoder, BzDecoder};
-
 extern crate polylabel;
 use polylabel::polylabel;
 
 extern crate geo;
 use geo::{Point, LineString, Polygon};
 use imageproc::drawing::Point as ImgPoint;
+mod retina;
+mod fetch;
+mod pdollarplus;
+use rand::{thread_rng, Rng};
 
 //网站1 https://www.hanzi5.com/bishun/7ed9.html
 //网站2 http://www.bihuashunxu.com/
 
 //矢量化 http://potrace.sourceforge.net/
 //矢量化 http://autotrace.sourceforge.net/
-
-//阿里巴巴图标字体库 http://www.iconfont.cn/
 
 /*
 设置通过难度级别
@@ -39,7 +33,19 @@ use imageproc::drawing::Point as ImgPoint;
 ------------------------------
 完整的轮廓用于显示汉字(不支持动画着色)
 笔画分块数据用来统计笔画轨迹(支持动画轨迹)
+
 */
+
+/**
+ ---------------------
+ 第二种：
+ 完整的笔画轮廓，导致体积过大，可以考虑存储汉字黑白图片压缩数据 / 或者使用字体文件渲染文本，笔画按照相对距离计算。
+ 怎么实现中心线细化？怎么计算中心线？
+ https://stackoverflow.com/questions/1203135/what-is-the-fastest-way-to-find-the-visual-center-of-an-irregularly-shaped-pol
+
+ 计算多边形中心点!!
+    https://github.com/urschrei/polylabel-rs
+ */
 
 use resize::Pixel::RGB24;
 use resize::Type::Lanczos3;
@@ -53,7 +59,7 @@ use image::{ImageBuffer, RgbImage, Rgb};
 const SIZE:usize = 300;
 
 fn main() {
-    let file = File::open("tao.gif").unwrap();
+    let file = File::open("fan.gif").unwrap();
     let mut decoder = Decoder::new(file);
 
     // Important:
@@ -145,26 +151,31 @@ fn main() {
     //Vec<Vec<(Vec<Point>, Vec<u8>)>>
     
     let mut whole_strokes:Vec<Vec<Vec<retina::Point>>> = vec![];
+
+    //至此所有的笔画块都有了(像素点)
+
     //生成每个笔画完整的轮廓
     let mut i = 1;
     let mut center_points = vec![];
-    let mut image_buffer = vec![0; SIZE*SIZE*3];
     for stroke in &strokes{
         let mut centers = vec![];
         let mut stroke_buffer = vec![0; SIZE*SIZE*3];
-        for blocks in stroke{
+        for (bi, blocks) in stroke.iter().enumerate(){
             //(Vec<Point>, Vec<u8>)
-            let mut test_buffer = vec![0; SIZE*SIZE*3];//计算中心点用
+            // println!("{:?}", blocks);
+            let mut rng = thread_rng();
+            let color1 = rng.gen_range(0, 255);
+            let color2 = rng.gen_range(0, 255);
+            let color3 = rng.gen_range(0, 255);
+
+            //计算中心点用
+            let mut test_buffer = vec![0; SIZE*SIZE*3];
 
             for i in (0..blocks.1.len()).step_by(3){
                 if blocks.1[i] == 0{
-                    stroke_buffer[i] = 255;
-                    stroke_buffer[i+1] = 255;
-                    stroke_buffer[i+2] = 255;
-
-                    image_buffer[i] = 255;
-                    image_buffer[i+1] = 255;
-                    image_buffer[i+2] = 255;
+                    stroke_buffer[i] = color1;
+                    stroke_buffer[i+1] = color2;
+                    stroke_buffer[i+2] = color3;
 
                     test_buffer[i] = 255;
                     test_buffer[i+1] = 255;
@@ -173,30 +184,33 @@ fn main() {
             }
 
             //识别每个block的边缘，并计算中心点
-            
             let edges = retina::edge_detect(SIZE as u32, SIZE as u32, &test_buffer, vec![100]);
             let contours = retina::edge_track(edges);
-            //绘图
-            //let mut image = RgbImage::new(SIZE as u32, SIZE as u32);
-            let mut max_idx = 0;
-            let mut max_len = 0;
-            for (id, points) in contours.iter().enumerate(){
-                if points.len()>max_len{
-                    max_idx = id;
-                    max_len = points.len();
+            println!("第{}笔 block{}的边缘数量:{}", i, bi, contours.len());
+            //if i == 1 && bi==0{
+                //绘图
+                let mut image = RgbImage::new(SIZE as u32, SIZE as u32);
+                let mut max_idx = 0;
+                let mut max_len = 0;
+                for (id, points) in contours.iter().enumerate(){
+                    if points.len()>max_len{
+                        max_idx = id;
+                        max_len = points.len();
+                    }
                 }
-            }
-            //计算block中心点
-            //let poly:Vec<ImgPoint<i32>> = contours[max_idx].iter().map(|point| ImgPoint::new(point.x as i32, point.y as i32)).collect();
-            //imageproc::drawing::draw_convex_polygon_mut(&mut image, &poly, Rgb([255, 255, 255]));
-            //image.save(format!("A_stroke{}_block{}.bmp", i, bi)).unwrap();
+                //计算block中心点
+                let poly:Vec<ImgPoint<i32>> = contours[max_idx].iter().map(|point| ImgPoint::new(point.x as i32, point.y as i32)).collect();
+                imageproc::drawing::draw_convex_polygon_mut(&mut image, &poly, Rgb([255, 255, 255]));
+                image.save(format!("A_stroke{}_block{}.bmp", i, bi)).unwrap();
 
-            let poly:Vec<(f32, f32)> = contours[max_idx].iter().map(|point| (point.x as f32, point.y as f32)).collect();
-            let poly = Polygon::new(poly.into(), vec![]);
-            let label_pos = polylabel(&poly, &0.10);
-            centers.push(label_pos);
+                let poly:Vec<(f32, f32)> = contours[max_idx].iter().map(|point| (point.x as f32, point.y as f32)).collect();
+                let poly = Polygon::new(poly.into(), vec![]);
+                let label_pos = polylabel(&poly, &0.10);
+                centers.push(label_pos);
+           // }
         }
         center_points.push(centers);
+        //println!("{:?}", center_points);
         //一幅完整的笔画
         image::save_buffer(&format!("stroke{}.bmp", i), &stroke_buffer, SIZE as u32, SIZE as u32, image::RGB(8)).unwrap();
 
@@ -261,56 +275,6 @@ fn main() {
 
         i+=1;
     }
-
-    //----------------------------------------------------------------------
-    //压缩图片
-    let sz = 32usize;
-    let mut dst = vec![0;sz*sz*3];
-    //resize::Type::Lanczos3
-    //resize::Type::Point
-    let mut resizer = resize::new(SIZE, SIZE, sz, sz, RGB24, resize::Type::Lanczos3);
-    resizer.resize(&image_buffer, &mut dst);
-    //保存完整的图片
-    image::save_buffer("image.bmp", &dst, sz as u32, sz as u32, image::RGB(8)).unwrap();
-
-    //转换成gif
-    let frame = gif::Frame::from_rgb(sz as u16, sz as u16, &mut dst);
-    let mut image = File::create("image.gif").unwrap();
-    let mut encoder = gif::Encoder::new(&mut image, sz as u16, sz as u16, &[]).unwrap();
-    encoder.write_frame(&frame).unwrap();
-
-    // let color_map = &[0, 0, 0, 0xFF, 0xFF, 0xFF];
-    // let mut image = File::create("image.gif").unwrap();
-    // let mut encoder = Encoder::new(&mut image, sz as u16, sz as u16, color_map).unwrap();
-    // encoder.set(Repeat::Finite(0)).unwrap();
-    // let mut frame = Frame::default();
-    // frame.width = sz as u16;
-    // frame.height = sz as u16;
-    // let mut total_colors = vec![];
-    // frame.buffer = dst.chunks(3).map(|pixel|{
-    //    if pixel[0]!=0{
-    //        if !total_colors.contains(&pixel[0]){
-    //            total_colors.push(pixel[0]);
-    //        }
-    //    }
-    //    if pixel[0]!=255{0}else{1} 
-    // }).collect();
-    // encoder.write_frame(&frame).unwrap();
-    // println!("{:?} 长度:{}", total_colors, total_colors.len());
-
-    //压缩数据
-    // let mut binary = vec![0;];
-    // let cdata = vec![];
-    // let mut a = bzip2::write::BzEncoder::new(cdata, Compression::Best);
-    // a.write_all(&dst).unwrap();
-    // let result = a.finish().unwrap();
-    //let compressor = BzEncoder::new(image_buffer.as_slice(), Compression::Best);
-
-    //存储
-    // let encoded: Vec<u8> = serialize(&result).unwrap();
-    // let mut file = File::create("image.data").unwrap();
-    // file.write_all(&encoded).unwrap();
-    //====================================================================
 
     //压缩数据
     //Vec<Vec<(Vec<Point>, Vec<u8>)>>
@@ -775,7 +739,8 @@ fn main() {
     // }
 
     for contours in strokes{
-        let mut color = Rgb([rand::random(), rand::random(), rand::random()]);
+        //let mut color = Rgb([rand::random(), rand::random(), rand::random()]);
+        let mut color = Rgb([255, 255, 255]);
         for points in contours{
             for i in 1..points.len(){
                 imageproc::drawing::draw_line_segment_mut(&mut image,
